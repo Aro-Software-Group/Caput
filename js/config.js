@@ -6,7 +6,8 @@ const CAPUT_CONFIG = {
     GEMINI_FLASH_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
     DEFAULT_MODEL: 'gemini-pro',
     MAX_TOKENS: 8192,
-    TEMPERATURE: 0.7
+    TEMPERATURE: 0.7,
+    API_TIMEOUT: 30000 // Added: API request timeout in milliseconds
   },
 
   // Task Efficiency Modes
@@ -40,7 +41,7 @@ const CAPUT_CONFIG = {
   // Tool Categories
   TOOL_CATEGORIES: {
     SEARCH: 'search',
-    CONTENT: 'content', 
+    CONTENT: 'content',
     ANALYSIS: 'analysis',
     AUTOMATION: 'automation',
     MULTIMEDIA: 'multimedia',
@@ -54,7 +55,7 @@ const CAPUT_CONFIG = {
     MAX_TOOL_CALLS_PER_SESSION: 10,
     HIGH_RISK_TOOLS: [
       'scraperBot',
-      'threatScanner', 
+      'threatScanner',
       'codeReviewer',
       'apiConnector',
       'webhookSender'
