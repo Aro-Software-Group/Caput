@@ -6,9 +6,9 @@ class SearchTools {
 
   async searchWeb(params) {
     const { query, mode = 'hybrid' } = params;
-    
+
     await this.simulateDelay(1000, 3000);
-    
+
     return {
       results: [
         {
@@ -31,9 +31,9 @@ class SearchTools {
 
   async quickLookup(params) {
     const { query } = params;
-    
+
     await this.simulateDelay(300, 800);
-    
+
     return {
       definition: `${query}とは、専門的な概念や技術を指す用語です。`,
       source: 'internal_knowledge_base',
@@ -43,9 +43,9 @@ class SearchTools {
 
   async siteCrawler(params) {
     const { domain, depth = 2 } = params;
-    
+
     await this.simulateDelay(2000, 5000);
-    
+
     return {
       urls: [
         `https://${domain}/`,
@@ -63,9 +63,9 @@ class SearchTools {
 
   async trendAnalyzer(params) {
     const { keyword, period = '30d' } = params;
-    
+
     await this.simulateDelay(1500, 3000);
-    
+
     return {
       keyword,
       period,
@@ -81,24 +81,105 @@ class SearchTools {
 
   async citationBuilder(params) {
     const { title, url, style = 'APA' } = params;
-    
+
     await this.simulateDelay(200, 500);
-    
+
     const author = "著者名";
     const year = new Date().getFullYear();
-    
+
     let citation = '';
     if (style === 'APA') {
       citation = `${author} (${year}). ${title}. Retrieved from ${url}`;
     } else if (style === 'MLA') {
       citation = `${author}. "${title}." Web. ${new Date().toLocaleDateString()}.`;
     }
-    
+
     return {
       citation,
       style,
       title,
       url
+    };
+  }
+
+  async scrapeWebsiteContent(params) {
+    const { url, selector } = params;
+
+    await this.simulateDelay();
+
+    if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+      return {
+        error: "Invalid URL provided. Please include http:// or https://",
+        fetched_url: url,
+      };
+    }
+
+    if (url === "https://example.com") {
+      if (selector === "h1") {
+        return {
+          extracted_content: ["Example Domain"],
+          page_title: "Example Domain",
+          fetched_url: "https://example.com",
+          selector_used: "h1",
+        };
+      }
+      if (selector === "p") {
+        return {
+          extracted_content: [
+            "This domain is for use in illustrative examples in documents. You may use this domain in literature without prior coordination or asking for permission.",
+          ],
+          page_title: "Example Domain",
+          fetched_url: "https://example.com",
+          selector_used: "p",
+        };
+      }
+      if (!selector) { // Handles null or undefined selector
+        return {
+          extracted_content:
+            "Main content of Example Domain: This domain is for use in illustrative examples in documents...",
+          page_title: "Example Domain",
+          fetched_url: "https://example.com",
+          selector_used: null,
+        };
+      }
+      // If selector is present but not "h1" or "p" for example.com, it will fall through to default.
+      // This is acceptable as per current logic, but could be made more specific if needed.
+    }
+
+    if (url === "https://www.wikipedia.org") {
+      if (selector === ".central-textlogo-wrapper span") {
+        return {
+          extracted_content: ["Wikipedia"],
+          page_title: "Wikipedia, the free encyclopedia",
+          fetched_url: "https://www.wikipedia.org",
+          selector_used: ".central-textlogo-wrapper span",
+        };
+      }
+      if (!selector) { // Handles null or undefined selector
+        return {
+          extracted_content:
+            "Main content of Wikipedia: Wikipedia is a multilingual free online encyclopedia...",
+          page_title: "Wikipedia, the free encyclopedia",
+          fetched_url: "https://www.wikipedia.org",
+          selector_used: null,
+        };
+      }
+      // If selector is present but not the specific one for wikipedia, it falls through.
+    }
+
+    // Default case for other URLs
+    let contentMessage;
+    if (!selector) {
+      contentMessage = `Main content from ${url} would be extracted here using a content processing function (like extractArticleText) (simulated).`;
+    } else {
+      contentMessage = `Successfully scraped content from ${url} using selector '${selector}' (simulated).`;
+    }
+
+    return {
+      extracted_content: contentMessage,
+      page_title: `Simulated Page for ${url}`,
+      fetched_url: url,
+      selector_used: selector || null,
     };
   }
 
