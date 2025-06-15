@@ -24,6 +24,54 @@
 #### 🔍 検索・情報収集 (SearchTools)
 - Web検索、即座検索、サイト巡回
 - トレンド分析、引用文生成
+- `scrapeWebsiteContent`: Extracts content from a given URL. Can optionally use a CSS selector to target specific elements. Currently, this tool simulates web scraping.
+    - **Parameters:**
+        - `url` (string): The URL of the website to scrape (e.g., "https://example.com").
+        - `selector` (string, optional): A CSS selector to specify which part of the page to extract (e.g., "h1", ".article-body"). If omitted, the tool attempts to extract the main content.
+    - **Returns:** An object containing:
+        - `extracted_content` (string|array): The scraped content. This might be a single string or an array of strings if multiple elements are matched by the selector.
+        - `page_title` (string): The title of the scraped page (simulated).
+        - `fetched_url` (string): The URL that was fetched.
+        - `selector_used` (string|null): The CSS selector that was used for extraction, or `null` if none was provided.
+        - `error` (string, optional): An error message if scraping failed.
+    - **Examples:**
+        - **Basic Usage (main content):**
+            ```javascript
+            // Simulates extracting main content from example.com
+            const results = await searchTools.scrapeWebsiteContent({ url: "https://example.com" });
+            console.log(results);
+            // Expected output (simulated):
+            // {
+            //   extracted_content: "Main content of Example Domain: This domain is for use in illustrative examples in documents...",
+            //   page_title: "Example Domain",
+            //   fetched_url: "https://example.com",
+            //   selector_used": null
+            // }
+            ```
+        - **Using a Selector:**
+            ```javascript
+            // Simulates extracting the H1 tag from example.com
+            const results = await searchTools.scrapeWebsiteContent({ url: "https://example.com", selector: "h1" });
+            console.log(results);
+            // Expected output (simulated):
+            // {
+            //   extracted_content: ["Example Domain"],
+            //   page_title: "Example Domain",
+            //   fetched_url: "https://example.com",
+            //   selector_used": "h1"
+            // }
+            ```
+        - **Error Handling:**
+            ```javascript
+            // Simulates an invalid URL
+            const results = await searchTools.scrapeWebsiteContent({ url: "invalid-url" });
+            console.log(results);
+            // Expected output (simulated):
+            // {
+            //   error: "Invalid URL provided. Please include http:// or https://",
+            //   fetched_url: "invalid-url"
+            // }
+            ```
 
 #### 📝 コンテンツ生成 (ContentTools)
 - ランディングページ作成、ブログ執筆

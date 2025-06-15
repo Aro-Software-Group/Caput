@@ -6,9 +6,9 @@ class ContentTools {
 
   async buildLandingPage(params) {
     const { title, sections = [], style = 'modern', cta = 'Get Started' } = params;
-    
+
     await this.simulateDelay(3000, 6000);
-    
+
     const html = `
 <!DOCTYPE html>
 <html lang="ja">
@@ -60,9 +60,9 @@ class ContentTools {
 
   async blogWriter(params) {
     const { title, tone = 'professional', keywords = [], length = 2000 } = params;
-    
+
     await this.simulateDelay(5000, 10000);
-    
+
     const article = `# ${title}
 
 ## はじめに
@@ -115,19 +115,19 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
 
   async tweetThreader(params) {
     const { topic, tweets = 6 } = params;
-    
+
     await this.simulateDelay(2000, 4000);
-    
+
     const thread = [];
-    
+
     thread.push(`🧵 ${topic}について詳しく解説します。知っておくべき重要なポイントをまとめました。 (1/${tweets})`);
-    
+
     for (let i = 2; i <= tweets - 1; i++) {
       thread.push(`${i}. ${topic}のポイント${i-1}について。これは非常に重要な要素です。実践的な観点から見ると... (${i}/${tweets})`);
     }
-    
+
     thread.push(`まとめ: ${topic}を成功させるためには、これらの要素を総合的に考慮することが重要です。皆さんの経験もぜひ教えてください！ (${tweets}/${tweets})`);
-    
+
     return {
       thread: thread,
       topic: topic,
@@ -139,9 +139,9 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
 
   async newsletterComposer(params) {
     const { sections = 3, theme = 'technology' } = params;
-    
+
     await this.simulateDelay(3000, 5000);
-    
+
     const newsletter = `
 <!DOCTYPE html>
 <html>
@@ -162,7 +162,7 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
         <h1>週刊 ${theme} ニュースレター</h1>
         <p>${new Date().toLocaleDateString('ja-JP')}</p>
     </div>
-    
+
     ${Array.from({length: sections}, (_, i) => `
     <div class="section">
         <div class="headline">注目のニュース ${i + 1}</div>
@@ -173,7 +173,7 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
         <a href="#" class="link">続きを読む →</a>
     </div>
     `).join('')}
-    
+
     <div class="section">
         <p style="text-align: center; color: #999;">
             このニュースレターがお役に立てれば幸いです。<br>
@@ -197,11 +197,11 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
 
   async adCopyGenerator(params) {
     const { product, audience, variants = 3 } = params;
-    
+
     await this.simulateDelay(1500, 3000);
-    
+
     const copies = [];
-    
+
     const templates = [
       `🚀 ${product}で${audience}の課題を解決！今すぐ始めて、劇的な変化を体験してください。`,
       `${audience}専用の${product}が登場！限定特典付きで、今だけの特別価格でご提供。`,
@@ -209,7 +209,7 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
       `${product}があれば、${audience}の悩みは過去のもの。今すぐ無料で試してみませんか？`,
       `${audience}の成功事例続々！${product}で実現する新しい可能性を発見しよう。`
     ];
-    
+
     for (let i = 0; i < variants; i++) {
       copies.push({
         id: i + 1,
@@ -219,7 +219,7 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
         estimatedCTR: (Math.random() * 5 + 2).toFixed(2) + '%'
       });
     }
-    
+
     return {
       copies: copies,
       product: product,
@@ -231,9 +231,9 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
 
   async seoKeywordSuggester(params) {
     const { topic, count = 10 } = params;
-    
+
     await this.simulateDelay(2000, 4000);
-    
+
     const keywords = [
       { keyword: `${topic} とは`, volume: 1200, difficulty: 'Low', intent: 'Informational' },
       { keyword: `${topic} 方法`, volume: 800, difficulty: 'Medium', intent: 'How-to' },
@@ -246,13 +246,59 @@ ${title}は、今後ますます重要性が高まる分野です。本記事で
       { keyword: `${topic} メリット`, volume: 300, difficulty: 'Medium', intent: 'Informational' },
       { keyword: `${topic} デメリット`, volume: 250, difficulty: 'Low', intent: 'Informational' }
     ];
-    
+
     return {
       keywords: keywords.slice(0, count),
       topic: topic,
       totalSuggestions: count,
       averageVolume: Math.round(keywords.reduce((sum, k) => sum + k.volume, 0) / keywords.length),
       competitionLevel: 'Medium'
+    };
+  }
+
+  async extractArticleText(params) {
+    const { htmlContent } = params;
+
+    await this.simulateDelay(500, 1000);
+
+    if (!htmlContent || typeof htmlContent !== 'string') {
+      return {
+        error: "Invalid HTML content provided.",
+        extracted_text: null,
+      };
+    }
+
+    const original_length = htmlContent.length;
+
+    if (htmlContent.includes("<article>")) {
+      // Simplified simulation: extract from first <article>
+      const articleStart = htmlContent.indexOf("<article>");
+      const articleEnd = htmlContent.indexOf("</article>", articleStart);
+      let extracted_text = "Simulated extraction from <article> tag";
+      if (articleStart !== -1 && articleEnd !== -1) {
+         // Basic extraction for simulation
+        const roughExtract = htmlContent.substring(articleStart + "<article>".length, articleEnd);
+        // This is a very basic simulation, not a real HTML parser
+        extracted_text = roughExtract.replace(/<[^>]+>/g, '').trim();
+        if (!extracted_text) { // If tags were nested and resulted in empty after stripping
+            extracted_text = "Content within article tag (Simulated)";
+        } else {
+            extracted_text = `${extracted_text} (Simulated extraction from <article> tag)`;
+        }
+      }
+      return { extracted_text, original_length };
+    }
+
+    if (htmlContent.includes("<p>")) {
+      return {
+        extracted_text: "Simulated extraction of paragraph text. Found <p> tags.",
+        original_length,
+      };
+    }
+
+    return {
+      extracted_text: "Simulated generic content extraction. No specific article tags found.",
+      original_length,
     };
   }
 
