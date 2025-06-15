@@ -693,9 +693,14 @@ class CaputUI {
   showNotification(message, type = 'info') {
     // Simple notification system
     const notification = document.createElement('div');
+
+    // Adjust top position based on screen width (mobile vs desktop header height)
+    const isMobile = window.innerWidth <= 768;
+    const topPosition = isMobile ? '60px' : '80px'; // Header is 50px on mobile, 60px on desktop
+
     notification.style.cssText = `
       position: fixed;
-      top: 80px;
+      top: ${topPosition};
       right: 20px;
       padding: 12px 16px;
       background: var(--primary-blue);

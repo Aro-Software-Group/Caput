@@ -50,6 +50,28 @@ const CAPUT_CONFIG = {
     INTEGRATION: 'integration'
   },
 
+  // Tools specific configurations
+  TOOLS: {
+    CACHEABLE_TOOLS: [
+        "searchWeb",
+        "quickLookup",
+        "trendAnalyzer",
+        "citationBuilder",
+        "chartBuilder",
+        "correlationAnalyzer",
+        "timeSeriesForecaster",
+        "codeExplainer",
+        "regexBuilder",
+        "taskPlanner"
+    ], // List of tool names that are safe to cache
+    TOOL_ALTERNATIVES: {
+        "searchWeb": ["quickLookup"], // If quickLookup can sometimes substitute a failed web search
+        "trendAnalyzer": [],          // No alternatives defined yet
+        "generateImage": ["generateImageSDXL", "generateImageDallE"] // Fictional examples
+    }
+    // Add other tool-specific configs here if needed in the future
+  },
+
   // Safety Configuration
   SAFETY: {
     MAX_TOOL_CALLS_PER_SESSION: 10,
@@ -102,6 +124,12 @@ const CAPUT_CONFIG = {
     'gemini-pro': 0.5,
     'gemini-1.5-flash': 0.25,
     'gemini-1.5-pro': 0.75
+  },
+
+  // Agent Behavior Configuration
+  AGENT_BEHAVIOR: {
+    OFFLINE_QUEUE_MAX_RETRIES: 5, // Max number of times to retry a queued request when back online
+    // Add other agent-level behavior flags or settings here
   }
 };
 

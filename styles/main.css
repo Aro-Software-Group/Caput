@@ -14,25 +14,25 @@
   --success-green: #34C759;
   --warning-orange: #FF9500;
   --error-red: #FF3B30;
-  
+
   /* Glassmorphism */
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.18);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-  
+
   /* Spacing */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
-  
+
   /* Border Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
-  
+
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-size-xs: 12px;
@@ -41,7 +41,7 @@
   --font-size-lg: 18px;
   --font-size-xl: 24px;
   --font-size-xxl: 32px;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -908,28 +908,170 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive Design */
+/* Responsive Design - Enhanced for Mobile */
 @media (max-width: 768px) {
+  html {
+    /* font-size: 94%; /* Example: Consider if needed. Impacts all rem units. */
+  }
+
+  body {
+    font-size: var(--font-size-sm); /* Adjust base body font for mobile if elements still too large */
+  }
+
   .main-container {
     grid-template-columns: 1fr;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    height: calc(100vh - 50px);
+    margin-top: 50px;
+  }
+
+  .right-panel {
+    order: -1; /* Already in place, good */
+    gap: var(--spacing-sm);
+  }
+
+  .task-board-content {
+    grid-template-columns: 1fr; /* Already in place, good */
+    padding: 0 var(--spacing-md) var(--spacing-md);
+  }
+
+  .task-board-header {
     padding: var(--spacing-md);
   }
-  
-  .right-panel {
-    order: -1;
+
+  .header {
+    height: 50px;
   }
-  
-  .task-board-content {
-    grid-template-columns: 1fr;
-  }
-  
+
   .header-content {
-    padding: 0 var(--spacing-md);
+    padding: 0 var(--spacing-md); /* Already in place, good */
   }
-  
+
   .task-efficiency-selector {
-    display: none;
+    display: none; /* Already in place, good */
+  }
+
+  .logo {
+    font-size: var(--font-size-md);
+  }
+  .logo i {
+    font-size: var(--font-size-lg);
+  }
+
+  /* Tap Target Adjustments & Spacing */
+  .btn { /* General buttons like in modals */
+    padding: var(--spacing-md) var(--spacing-lg); /* Increased padding for easier tapping */
+    min-height: 44px;
+    font-size: var(--font-size-md); /* Ensure text is large enough */
+  }
+
+  .settings-btn, /* Header settings button */
+  .changelog-link {
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: 40px;
+    font-size: var(--font-size-sm);
+    display: inline-flex; /* Ensure min-height is respected */
+    align-items: center;  /* Ensure min-height is respected */
+  }
+
+  .send-btn { /* Chat send button */
+    width: 40px; /* Increased size */
+    height: 40px; /* Increased size */
+    right: var(--spacing-sm);
+    bottom: var(--spacing-sm);
+    font-size: 18px; /* Make icon larger */
+  }
+
+  .collapse-btn, /* Panel collapse */
+  .toggle-board-btn, /* Task board toggle */
+  .close-btn { /* Modal close */
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--spacing-sm);
+    display: inline-flex; /* Crucial for applying min-width/height to icon buttons */
+    align-items: center;
+    justify-content: center;
+  }
+
+  .panel-header {
+    padding: var(--spacing-md);
+  }
+  .panel-header h3 {
+    font-size: var(--font-size-md);
+  }
+
+  .reasoning-content {
+    padding: var(--spacing-md);
+  }
+  .reasoning-step {
+    padding: var(--spacing-sm);
+  }
+
+  .usage-stats {
+    padding: var(--spacing-md);
+  }
+  .stat-item {
+    padding: var(--spacing-sm);
+  }
+
+  /* Chat specific adjustments */
+  .chat-messages {
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .message.user-message {
+    margin-left: var(--spacing-md); /* Reduced side margin for messages */
+  }
+
+  .message.agent-message {
+    margin-right: var(--spacing-md); /* Reduced side margin for messages */
+  }
+
+  .message-content {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+  }
+
+  .agent-avatar, .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .chat-input-container {
+    padding: var(--spacing-sm);
+    max-width: 100%;
+  }
+
+  #user-input {
+    padding: 12px 50px 12px 12px; /* Adjusted padding for send button visibility and text area */
+    font-size: var(--font-size-md);
+    max-height: 100px;
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+  .modal-header {
+    padding: var(--spacing-md);
+  }
+  .modal-header h3 {
+    font-size: var(--font-size-md);
+  }
+  .modal-body {
+    padding: var(--spacing-md);
+  }
+  .modal-footer {
+    padding: var(--spacing-md);
+  }
+  .setting-group input,
+  .setting-group select {
+    padding: var(--spacing-md); /* Keep these larger for easier interaction */
+    font-size: var(--font-size-sm);
   }
 }
 
