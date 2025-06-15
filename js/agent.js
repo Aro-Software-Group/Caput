@@ -1,10 +1,12 @@
 // Caput AI Agent Core - Autonomous Planning & Execution Engine
 class CaputAgent {
-  constructor(config, tools) {
+  constructor(config, tools, components = {}) { // Added components for storage, ui
     this.config = config;
     this.tools = tools;
+    this.components = components; // Store components (storage, ui)
     this.currentTask = null;
     this.executionLoop = null;
+    this.requestQueue = []; // For offline request queuing
     this.memory = {
       shortTerm: [],
       longTerm: [],
@@ -18,58 +20,334 @@ class CaputAgent {
     };
     this.currentMode = 'middle';
     this.apiKey = null;
+    this.isOffline = !navigator.onLine; // Initial online status
   }
 
   async initialize() {
     // Load API key and settings
-    this.apiKey = await this.loadApiKey();
+    this.apiKey = await this.loadApiKey(); // This uses localStorage directly, consider moving to CaputStorage if encrypted key is desired there
     if (!this.apiKey) {
-      throw new Error('Gemini API キーが設定されていません');
+      // Don't throw if offline, allow app to load and potentially use cached data or queue tasks
+      if (!this.isOffline) {
+        throw new Error('Gemini API キーが設定されていません (オンライン時)');
+      }
+      console.warn('Gemini API キーが設定されていません (オフライン)');
     }
 
     // Load user settings
-    const settings = await this.loadSettings();
+    const settings = await this.loadSettings(); // Also uses localStorage
     this.currentMode = settings.efficiencyMode || 'middle';
 
-    console.log('Caput Agent initialized successfully');
+    // Load request queue from storage
+    if (this.components.storage) {
+      try {
+        const storedQueue = await this.components.storage.getCacheItem('offlineRequestQueue');
+        if (storedQueue && Array.isArray(storedQueue)) {
+          this.requestQueue = storedQueue;
+          console.log('Offline request queue loaded from storage:', this.requestQueue.length, 'items');
+        }
+      } catch (error) {
+        console.error('Error loading offline request queue:', error);
+      }
+    } else {
+      console.warn('Storage component not available, offline queue persistence disabled.');
+    }
+
+    // Listen for online/offline events
+    window.addEventListener('online', () => this.handleOnlineStatusChange(true));
+    window.addEventListener('offline', () => this.handleOnlineStatusChange(false));
+
+    // Initial check and processing if online
+    if (!this.isOffline) {
+        this.processRequestQueue();
+    }
+
+    console.log('Caput Agent initialized successfully. Initial online status:', !this.isOffline);
     return true;
+  }
+
+  handleOnlineStatusChange(isOnline) {
+    this.isOffline = !isOnline;
+    console.log(`Network status changed. Agent is now ${isOnline ? 'online' : 'offline'}.`);
+    if (isOnline) {
+      this.processRequestQueue();
+    }
+    // Optionally notify UI about online/offline status
+    if (this.tools && typeof this.tools.executeTool === 'function') {
+        this.tools.executeTool('showNotification', {
+            message: `ネットワーク接続が${isOnline ? '回復しました' : '切れました'}。`,
+            type: isOnline ? 'success' : 'warning',
+            duration: 3000
+        }).catch(e => console.warn("Error sending online/offline notification:", e));
+    }
+  }
+
+  async queueRequest(requestDetails) {
+    if (!this.components.storage) {
+      console.error('Storage component not available. Cannot queue request:', requestDetails);
+      if (typeof this.tools.executeTool === 'function') {
+        this.tools.executeTool('showNotification', {
+          message: 'オフラインリクエストをキューに追加できませんでした (ストレージエラー)。',
+          type: 'error',
+          duration: 5000
+        }).catch(e => console.warn("Error sending notification:", e));
+      }
+      return;
+    }
+
+    // Add a timestamp and a unique ID for better tracking
+    const queuedItem = {
+      id: `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
+      ...requestDetails
+    };
+
+    this.requestQueue.push(queuedItem);
+    console.log('Request queued:', queuedItem);
+
+    try {
+      // TTL: 7 days in minutes (7 * 24 * 60)
+      await this.components.storage.setCacheItem('offlineRequestQueue', this.requestQueue, 10080);
+      if (typeof this.tools.executeTool === 'function') {
+        this.tools.executeTool('showNotification', {
+          message: `リクエストはキューに追加されました。オンライン時に処理されます。(現在 ${this.requestQueue.length} 件)`,
+          type: 'info',
+          duration: 3000
+        }).catch(e => console.warn("Error sending notification:", e));
+      }
+    } catch (error) {
+      console.error('Failed to save offline request queue:', error);
+      if (typeof this.tools.executeTool === 'function') {
+        this.tools.executeTool('showNotification', {
+          message: 'オフラインリクエストキューの保存に失敗しました。',
+          type: 'error',
+          duration: 3000
+        }).catch(e => console.warn("Error sending notification:", e));
+      }
+      // Potentially remove the item from the in-memory queue if saving failed, or implement retry for saving
+      this.requestQueue.pop(); // Simple rollback
+    }
+  }
+
+  async processRequestQueue() {
+    if (!this.components.storage || this.requestQueue.length === 0) {
+      if (this.requestQueue.length > 0) {
+         console.log('Storage component not available. Cannot process request queue.');
+      }
+      return;
+    }
+
+    if (this.isOffline) {
+      console.log('Cannot process request queue while offline.');
+      return;
+    }
+
+    console.log('Processing offline request queue:', this.requestQueue.length, 'items');
+    if (typeof this.tools.executeTool === 'function') {
+      this.tools.executeTool('showNotification', {
+        message: `オンラインになりました。キュー内のリクエスト ${this.requestQueue.length} 件を処理します...`,
+        type: 'info',
+        duration: 3000
+      }).catch(e => console.warn("Error sending notification:", e));
+    }
+
+    const processingQueue = [...this.requestQueue]; // Process a copy
+    this.requestQueue = []; // Clear the main queue, failed items will be re-added
+
+    for (const item of processingQueue) {
+      console.log('Attempting to process queued request:', item);
+      try {
+        let result;
+        // TODO: Make this more generic if other function calls than callGemini are queued.
+        // For now, assuming all queued items are `callGemini` related.
+        if (item.type === 'callGemini') {
+          result = await this.callGemini(item.prompt, item.geminiCallType); // geminiCallType was the original 'type' for callGemini
+           // If callGemini was successful, the original caller needs to handle the result.
+           // This simplified queue processing just retries the Gemini call.
+           // A more robust system would re-trigger the original higher-level function.
+          console.log(`Queued request ${item.id} (type: ${item.geminiCallType}) processed successfully. Result:`, result);
+          // Here, you'd ideally notify the user or update the UI based on the original goal of this call.
+          // For now, just a generic success notification.
+          if (typeof this.tools.executeTool === 'function') {
+            this.tools.executeTool('showNotification', {
+              message: `キュー内のリクエスト (${item.geminiCallType}) が正常に処理されました。`,
+              type: 'success',
+              duration: 3000
+            }).catch(e => console.warn("Error sending notification:", e));
+          }
+        } else {
+            console.warn(`Unknown queued request type: ${item.type}. Skipping.`);
+            // Re-add to queue if unknown, as we can't process it.
+            this.requestQueue.push(item);
+            continue;
+        }
+
+      } catch (error) {
+        console.error(`Failed to process queued request ${item.id}:`, error);
+        // If it's an offline error again, or some other persistent issue, re-queue it.
+        // Potentially add a retry limit to items.
+        item.retries = (item.retries || 0) + 1;
+        if (item.retries <= (this.config.OFFLINE_QUEUE_MAX_RETRIES || 3) ) {
+            this.requestQueue.push(item); // Re-add to the main queue to try later
+            if (typeof this.tools.executeTool === 'function') {
+                this.tools.executeTool('showNotification', {
+                message: `キューのリクエスト (${item.geminiCallType}) の処理に失敗しました。再試行します。(${item.retries}回目)`,
+                type: 'warning',
+                duration: 3000
+                }).catch(e => console.warn("Error sending notification:", e));
+            }
+        } else {
+             if (typeof this.tools.executeTool === 'function') {
+                this.tools.executeTool('showNotification', {
+                message: `キューのリクエスト (${item.geminiCallType}) が最大再試行回数に達しました。`,
+                type: 'error',
+                duration: 5000
+                }).catch(e => console.warn("Error sending notification:", e));
+            }
+        }
+      }
+    }
+
+    // Persist the updated queue (items that were re-added)
+    try {
+      await this.components.storage.setCacheItem('offlineRequestQueue', this.requestQueue, 10080);
+      if (this.requestQueue.length > 0) {
+        console.log('Updated offline request queue saved. Remaining items:', this.requestQueue.length);
+      } else {
+        console.log('Offline request queue successfully emptied and saved.');
+        if (typeof this.tools.executeTool === 'function') {
+            this.tools.executeTool('showNotification', {
+            message: `キュー内のすべてのリクエストが処理されました。`,
+            type: 'success',
+            duration: 3000
+            }).catch(e => console.warn("Error sending notification:", e));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save updated offline request queue:', error);
+    }
   }
 
   async processGoal(userGoal) {
     try {
       // Step 1: ANALYZE - 目標理解と文脈分析
       await this.showReasoning('分析開始', 'analyzer', 'active', { goal: userGoal });
-      const analysis = await this.analyzeGoal(userGoal);
+      let analysis;
+      try {
+        analysis = await this.analyzeGoal(userGoal);
+      } catch (error) {
+        if (error.isOffline) {
+          console.warn('Offline during analyzeGoal. Queuing request.');
+          await this.queueRequest({
+            type: 'callGemini', // Specific type for routing in processRequestQueue
+            originalAction: 'analyzeGoal', // For context when processing
+            // The prompt for analyzeGoal is complex and generated internally.
+            // Storing the userGoal and type is enough to re-trigger analyzeGoal.
+            geminiCallType: 'analysis', // Corresponds to the 'type' param in callGemini
+            userGoal: userGoal, // Necessary to re-trigger this.analyzeGoal(userGoal)
+            // No need to store the full prompt if we re-call analyzeGoal directly.
+          });
+          const queueError = new Error(`オフラインのためゴール分析をキューに追加しました。オンライン時に再開されます。`);
+          queueError.isQueued = true;
+          throw queueError;
+        }
+        throw error; // Re-throw other errors
+      }
+
 
       // Step 2: PLAN - 多段階計画の生成
       await this.showReasoning('計画策定', 'planner', 'active', analysis);
-      const plan = await this.generatePlan(analysis);
+      let plan;
+      try {
+        plan = await this.generatePlan(analysis);
+      } catch (error) {
+         if (error.isOffline) {
+          console.warn('Offline during generatePlan. Queuing request.');
+          await this.queueRequest({
+            type: 'callGemini', // Indicates the action to take when processing queue
+            originalAction: 'generatePlan',
+            geminiCallType: 'planning',
+            analysisData: analysis, // Necessary to re-trigger this.generatePlan(analysis)
+          });
+          const queueError = new Error(`オフラインのため計画生成をキューに追加しました。オンライン時に再開されます。`);
+          queueError.isQueued = true;
+          throw queueError;
+        }
+        throw error;
+      }
 
       // Step 3: EXECUTE - ツール実行ループ
+      // Note: executePlan itself has logic for offline tool caching and handling Gemini calls within tools.
+      // It might throw errors that need to be caught here if a critical tool fails offline and halts the plan.
       await this.showReasoning('実行開始', 'executor', 'active', { steps: plan.steps.length });
-      const results = await this.executePlan(plan);
+      const results = await this.executePlan(plan, userGoal, analysis);
 
       // Step 4: VERIFY - 結果検証
       await this.showReasoning('検証実行', 'verifier', 'active', { results: results.length });
-      const verification = await this.verifyResults(results, analysis.success_criteria);
+      let verification;
+      try {
+        verification = await this.verifyResults(results, analysis.success_criteria);
+      } catch (error) {
+        if (error.isOffline) {
+          console.warn('Offline during verifyResults. Queuing request.');
+          await this.queueRequest({
+            type: 'callGemini',
+            originalAction: 'verifyResults',
+            geminiCallType: 'verification',
+            resultsData: results, // Context to re-trigger verifyResults
+            criteriaData: analysis.success_criteria
+          });
+          const queueError = new Error(`オフラインのため結果検証をキューに追加しました。オンライン時に再開されます。`);
+          queueError.isQueued = true;
+          throw queueError;
+        }
+        throw error;
+      }
+
 
       // Step 5: DELIVER - 最終成果物の提示
       await this.showReasoning('完了', 'deliverer', 'completed', verification);
-      const finalDelivery = await this.prepareDelivery(results, verification);
+      let finalDelivery;
+      try {
+        // generateSummary within prepareDelivery makes a Gemini call.
+        finalDelivery = await this.prepareDelivery(results, verification);
+      } catch (error) {
+        if (error.isOffline) {
+          // As prepareDelivery > generateSummary is a final summarization step,
+          // we might choose not to queue it automatically, or queue it with full context.
+          // For now, it will just fail and the user gets results without the final summary.
+          console.warn('Offline during prepareDelivery (likely generateSummary). This step is not automatically queued.');
+          const offlineError = new Error(`オフラインのため最終成果物の準備 (要約生成など) に失敗しました。`);
+          offlineError.isOfflineNoQueue = true; // Special flag
+          throw offlineError;
+        }
+        throw error;
+      }
+
+      // Check if any part of the original userGoal was queued.
+      const goalWasQueued = this.requestQueue.some(item =>
+        (item.userGoal === userGoal && item.originalAction === 'analyzeGoal') ||
+        (item.analysisData && JSON.stringify(item.analysisData.user_input) === JSON.stringify(userGoal)) // Heuristic for plan
+      );
 
       return {
-        success: true,
+        success: !goalWasQueued, // Success is true only if nothing was queued for this specific goal.
         analysis,
         plan,
         results,
         verification,
         delivery: finalDelivery,
-        stats: this.getSessionStats()
+        stats: this.getSessionStats(),
+        isPartialDueToQueue: goalWasQueued
       };
 
     } catch (error) {
-      await this.showReasoning('エラー発生', 'error_handler', 'error', { error: error.message });
-      throw error;
+      // If error.isQueued or error.isOfflineNoQueue, it's an error message we constructed.
+      // Otherwise, it's an unexpected error.
+      if (!error.isQueued && !error.isOfflineNoQueue) {
+         await this.showReasoning('エラー発生', 'error_handler', 'error', { error: error.message });
+      }
+      throw error; // Re-throw the original or modified error.
     }
   }
 
@@ -91,6 +369,7 @@ class CaputAgent {
   "context_needed": ["必要な追加情報"]
 }`;
 
+    // No direct try-catch here for offline, processGoal will handle it.
     const response = await this.callGemini(prompt, 'analysis');
     const tokens = this.estimateTokens(prompt + JSON.stringify(response));
     this.updateStats({ tokens });
@@ -99,6 +378,7 @@ class CaputAgent {
   }
 
   async generatePlan(analysis) {
+    // No direct try-catch here for offline, processGoal will handle it.
     const mode = this.config.EFFICIENCY_MODES[this.currentMode];
 
     const prompt = `
@@ -132,6 +412,7 @@ ${this.tools.getToolList().map(tool => `- ${tool.name}: ${tool.description}`).jo
   "resource_requirements": ["必要なリソース"]
 }`;
 
+    // No direct try-catch here for offline, processGoal will handle it.
     const response = await this.callGemini(prompt, 'planning');
     const tokens = this.estimateTokens(prompt + JSON.stringify(response));
     this.updateStats({ tokens });
@@ -139,43 +420,102 @@ ${this.tools.getToolList().map(tool => `- ${tool.name}: ${tool.description}`).jo
     return response;
   }
 
-  async executePlan(plan) {
+  async executePlan(plan, userGoal, analysisContext) { // Added userGoal, analysisContext for re-queueing
     const results = [];
     const mode = this.config.EFFICIENCY_MODES[this.currentMode];
 
     for (let i = 0; i < plan.steps.length && i < mode.maxToolCalls; i++) {
-      const step = plan.steps[i];
+      const currentStepConfig = plan.steps[i]; // Use a modifiable reference for the current step
+
+      // Initialize attemptedTools for the current conceptual step if not already present
+      currentStepConfig.attemptedTools = currentStepConfig.attemptedTools || new Set();
+      const currentToolNameForExecution = currentStepConfig.tool; // The tool to be executed in this iteration
+
+      // Ensure the first tool to be tried is part of attemptedTools
+      // This is crucial if a step is retried due to `i--` from a previous alternative attempt.
+      if (!currentStepConfig.attemptedTools.has(currentToolNameForExecution)) {
+          currentStepConfig.attemptedTools.add(currentToolNameForExecution);
+          // Store the very first tool name if it's not already stored (marks the beginning of attempts for this step)
+          if (!currentStepConfig.originalTool) {
+              currentStepConfig.originalTool = currentToolNameForExecution;
+          }
+      }
+
 
       try {
         await this.showReasoning(
-          `ステップ ${step.step_number}: ${step.action}`,
-          step.tool,
+          `ステップ ${currentStepConfig.step_number}: ${currentStepConfig.action}`,
+          currentToolNameForExecution, // Use the tool for the current attempt
           'active',
-          { parameters: step.parameters }
+          { parameters: currentStepConfig.parameters }
         );
 
         // Check dependencies
-        if (step.dependencies && step.dependencies.length > 0) {
-          const dependenciesMet = step.dependencies.every(dep =>
+        if (currentStepConfig.dependencies && currentStepConfig.dependencies.length > 0) {
+          const dependenciesMet = currentStepConfig.dependencies.every(dep =>
             results.some(r => r.step_number === dep && r.success)
           );
 
           if (!dependenciesMet) {
-            throw new Error(`Dependencies not met for step ${step.step_number}`);
+            throw new Error(`Dependencies not met for step ${currentStepConfig.step_number}`);
           }
         }
 
+        // OFFLINE TOOL CACHING LOGIC
+        if (this.isOffline) {
+            const isCacheableTool = this.config.CACHEABLE_TOOLS?.includes(currentToolNameForExecution);
+            if (isCacheableTool && this.components.storage) {
+                const cacheKey = `toolcache_${currentToolNameForExecution}_${JSON.stringify(currentStepConfig.parameters || {})}`;
+                const cachedResult = await this.components.storage.getCacheItem(cacheKey);
+                if (cachedResult) {
+                    console.log(`Using cached result for offline tool: ${currentToolNameForExecution}`);
+                    results.push({ ...cachedResult, fromCache: true, step_number: currentStepConfig.step_number });
+                     await this.showReasoning(
+                        `完了 (キャッシュ): ${currentStepConfig.action}`,
+                        currentToolNameForExecution,
+                        'completed',
+                        { result: cachedResult, fromCache: true }
+                    );
+                    currentStepConfig.attemptedTools = new Set(); // Reset for this step as it's now "successful"
+                    currentStepConfig.originalTool = null; // Clear original tool tracking
+                    continue;
+                } else {
+                    console.warn(`Offline and no cache for ${currentToolNameForExecution}. Step ${currentStepConfig.step_number} cannot be completed with this tool.`);
+                    // This will now fall through to the catch block or try alternatives if defined
+                    throw {
+                        isOffline: true,
+                        isCacheMiss: true,
+                        message: `Offline and no cached data available for ${currentToolNameForExecution}.`
+                    };
+                }
+            } else if (this.isOffline && currentToolNameForExecution.toLowerCase().includes('gemini')) {
+                 throw {
+                    isOffline: true,
+                    message: `Tool ${currentToolNameForExecution} requires online access.`
+                 };
+            }
+        }
+
         // Execute tool
-        const toolResult = await this.tools.executeTool(
-          step.tool,
-          step.parameters,
-          { highRiskEnabled: this.settings?.highRiskToolsEnabled || false }
-        );
+        let toolResult;
+        if (currentToolNameForExecution === 'callGeminiDirectly') {
+            toolResult = {
+                success: true,
+                data: await this.callGemini(currentStepConfig.parameters.prompt, currentStepConfig.parameters.type || 'general'),
+                error: null
+            };
+        } else {
+            toolResult = await this.tools.executeTool(
+              currentToolNameForExecution,
+              currentStepConfig.parameters,
+              { highRiskEnabled: this.settings?.highRiskToolsEnabled || false }
+            );
+        }
 
         const stepResult = {
-          step_number: step.step_number,
-          action: step.action,
-          tool: step.tool,
+          step_number: currentStepConfig.step_number,
+          action: currentStepConfig.action,
+          tool: currentToolNameForExecution, // Log the tool that was actually executed
           success: toolResult.success,
           output: toolResult.data,
           error: toolResult.error,
@@ -183,52 +523,94 @@ ${this.tools.getToolList().map(tool => `- ${tool.name}: ${tool.description}`).jo
           timestamp: new Date().toISOString()
         };
 
-        // TODO: For large tasks, consider summarizing or truncating stepResult.output
-        // if it's excessively large, to manage memory.
-        // The full output can still be passed to subsequent dependent steps if necessary.
+        const isCacheableToolOnline = this.config.CACHEABLE_TOOLS?.includes(currentToolNameForExecution);
+        if (toolResult.success && isCacheableToolOnline && this.components.storage) {
+            const cacheKey = `toolcache_${currentToolNameForExecution}_${JSON.stringify(currentStepConfig.parameters || {})}`;
+            await this.components.storage.setCacheItem(cacheKey, stepResult, 1440)
+              .catch(e => console.error("Failed to cache tool result:", e));
+        }
+
         results.push(stepResult);
         this.updateStats({ toolCalls: 1 });
 
         await this.showReasoning(
-          `完了: ${step.action}`,
-          step.tool,
+          `完了: ${currentStepConfig.action}`,
+          currentToolNameForExecution,
           stepResult.success ? 'completed' : 'error',
           { result: stepResult }
         );
 
-        // Short delay between steps
-        await new Promise(resolve => setTimeout(resolve, 500));
+        currentStepConfig.attemptedTools = new Set(); // Reset for this step after success
+        currentStepConfig.originalTool = null; // Clear original tool tracking
+
+        await new Promise(resolve => setTimeout(resolve, 500)); // Short delay
 
       } catch (error) {
-        const errorResult = {
-          step_number: step.step_number,
-          action: step.action,
-          tool: step.tool,
-          success: false,
-          error: error.message,
-          timestamp: new Date().toISOString()
-        };
+        // Use originalTool for looking up alternatives if it exists, otherwise use the tool that just failed.
+        const toolNameToGetAlternatives = currentStepConfig.originalTool || currentToolNameForExecution;
+        const alternatives = (this.config.TOOLS?.TOOL_ALTERNATIVES && this.config.TOOLS.TOOL_ALTERNATIVES[toolNameToGetAlternatives]) || [];
+        let nextTool = null;
 
-        results.push(errorResult);
+        for (const alt of alternatives) {
+          if (!currentStepConfig.attemptedTools.has(alt)) {
+            nextTool = alt;
+            break;
+          }
+        }
 
-        await this.showReasoning(
-          `エラー: ${step.action}`,
-          step.tool,
-          'error',
-          { error: error.message }
-        );
+        // Check if we should abort based on the current error, even before trying alternatives for some error types.
+        if (this.shouldAbortOnError(error, currentStepConfig, results)) {
+          // Record final failure for this step using originalTool name if available
+          const finalErrorResult = {
+            step_number: currentStepConfig.step_number, action: currentStepConfig.action,
+            tool: currentStepConfig.originalTool || currentToolNameForExecution, // Report original tool
+            success: false, error: error.message, timestamp: new Date().toISOString(),
+            isOfflineError: error.isOffline || false
+          };
+          results.push(finalErrorResult);
+          await this.showReasoning( `エラー (致命的/最大試行回数): ${currentStepConfig.action}`, currentStepConfig.originalTool || currentToolNameForExecution, 'error', { error: error.message });
+          break; // Abort plan execution
+        }
 
-        // Decide whether to continue or abort
-        if (this.shouldAbortOnError(error, step, results)) {
-          break;
+        if (nextTool) {
+          await this.showReasoning(
+            `ツール ${currentToolNameForExecution} 失敗。代替ツール試行: ${nextTool}`,
+            nextTool,
+            'active',
+            { originalTool: currentToolNameForExecution, error: error.message, parameters: currentStepConfig.parameters }
+          );
+          currentStepConfig.tool = nextTool; // Update the step to use the alternative tool
+          // Do NOT add to attemptedTools here, it's added at the start of the iteration.
+          i--; // Decrement i to retry the current step with the alternative tool
+          continue; // Jump to the next iteration, which will re-process currentStepConfig with the new tool
+        } else {
+          // No more alternatives, or shouldAbortOnError was true. Record final failure for this step.
+          const finalErrorResult = {
+            step_number: currentStepConfig.step_number, action: currentStepConfig.action,
+            tool: currentStepConfig.originalTool || currentToolNameForExecution, // Report original tool
+            success: false, error: error.message, timestamp: new Date().toISOString(),
+            isOfflineError: error.isOffline || false,
+            attemptedToolsList: Array.from(currentStepConfig.attemptedTools)
+          };
+          results.push(finalErrorResult);
+          await this.showReasoning(
+            `エラー (代替なし): ${currentStepConfig.action}`,
+            currentStepConfig.originalTool || currentToolNameForExecution,
+            'error',
+            { error: error.message, attempted: Array.from(currentStepConfig.attemptedTools) }
+          );
+          // No break here, loop continues to next step unless failureCount from shouldAbortOnError (checked at start of catch) caused a break.
+           if (this.shouldAbortOnError(error, currentStepConfig, results)) { // Re-check after adding this failure
+                break;
+           }
         }
       }
     }
-
     return results;
   }
 
   async verifyResults(results, successCriteria) {
+    // No direct try-catch here for offline, processGoal will handle it.
     const prompt = `
 実行結果の検証を行ってください。
 
@@ -256,16 +638,17 @@ ${JSON.stringify(results, null, 2)}
   }
 
   async prepareDelivery(results, verification) {
+    // No direct try-catch here for offline, processGoal will handle it.
     const successfulResults = results.filter(r => r.success);
     const artifacts = this.extractArtifacts(successfulResults);
 
-    const summary = await this.generateSummary(results, verification);
+    const summary = await this.generateSummary(results, verification); // This itself calls Gemini
 
     return {
-      summary,
+      summary, // This could be a problem if generateSummary fails offline
       artifacts,
       metrics: {
-        steps_completed: successfulResults.length,
+        steps_completed: successfulResults.length, // Filtered for success
         total_steps: results.length,
         success_rate: successfulResults.length / results.length,
         quality_score: verification.quality_score,
@@ -291,17 +674,24 @@ ${JSON.stringify(results, null, 2)}
 
 自然で読みやすい日本語で回答してください。`;
 
+    // This is a call to Gemini. If it fails offline, the whole prepareDelivery might fail.
+    // processGoal has a try-catch for prepareDelivery, but doesn't queue it by default.
     const response = await this.callGemini(prompt, 'summary');
     const tokens = this.estimateTokens(prompt + response);
     this.updateStats({ tokens });
 
     return response;
   }
-
   async callGemini(prompt, type = 'general') {
-    if (!this.apiKey) {
-      throw new Error('API key not configured');
+    if (!this.apiKey && this.isOffline) {
+      // Potentially queue this goal if it's a critical user request
+      console.warn('API key not available and offline. Goal processing may be queued.');
+      // For now, let it proceed to callGemini which will handle the offline error
+      // In a more robust implementation, one might queue `processGoal` itself here.
+    } else if (!this.apiKey) {
+        throw new Error('API key not configured');
     }
+
 
     const mode = this.config.EFFICIENCY_MODES[this.currentMode];
     const modelEndpoint = mode.preferredModel === 'gemini-1.5-flash'
@@ -314,7 +704,7 @@ ${JSON.stringify(results, null, 2)}
 
     let response;
     try {
-      response = await fetch(`${modelEndpoint}?key=${this.apiKey}`, {
+      response = await fetch(`${modelEndpoint}?key=${this.apiKey}`, { // Ensure apiKey is available
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -332,15 +722,60 @@ ${JSON.stringify(results, null, 2)}
       });
     } catch (error) {
       if (error.name === 'AbortError') {
-        throw new Error(`Gemini API request timed out after ${timeoutValue}ms`);
+        const offlineError = new Error(`Gemini API request timed out after ${timeoutValue}ms. This might be due to network issues.`);
+        offlineError.isOffline = true; // Custom property
+        offlineError.isTimeout = true;
+        throw offlineError;
       }
-      throw error; // Re-throw other fetch errors
+      // Check for general fetch error (often indicates offline)
+      if (error.name === 'TypeError' && error.message.toLowerCase().includes('failed to fetch')) {
+        const offlineError = new Error('Network error: Failed to fetch. You might be offline.');
+        offlineError.isOffline = true;
+        throw offlineError;
+      }
+      throw error; // Re-throw other errors
     } finally {
       clearTimeout(timeoutId); // Important: clear the timeout
     }
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`); // Include status
+      const status = response.status;
+      const statusText = response.statusText;
+      let errorMsg = `Gemini API error: ${status} ${statusText}.`;
+      let isCritical = false;
+
+      // Check for API key related errors (e.g., 401 Unauthorized, 403 Forbidden)
+      if (status === 401 || status === 403) {
+        errorMsg = `Gemini API error: ${status} ${statusText}. API Key may be invalid or have insufficient permissions.`;
+        isCritical = true;
+        // Potentially clear the stored API key or prompt user to re-enter
+        console.error("Critical API Key Error. Consider clearing stored key or prompting user.");
+        // this.clearApiKey(); // Example if such a method exists and is desired
+      }
+
+      // Check if it's the service worker's offline response
+      if (status === 503) {
+        try {
+          const errorData = await response.json(); // Try to parse error response from API or SW
+          if (errorData.error === 'Offline, request not sent') {
+            const offlineError = new Error('Offline: Request not sent by Service Worker.');
+            offlineError.isOffline = true;
+            offlineError.isServiceWorkerOfflineResponse = true;
+            throw offlineError; // Throw immediately for this specific offline case
+          } else if (errorData.error && errorData.error.message) {
+             // Use detailed error message from API if available
+             errorMsg = `Gemini API error: ${status} ${statusText} - ${errorData.error.message}`;
+          }
+        } catch (e) {
+          // Not a JSON response or not our specific offline message, proceed as normal error
+        }
+      }
+
+      const apiError = new Error(errorMsg);
+      if (isCritical) {
+        apiError.isCritical = true;
+      }
+      throw apiError;
     }
 
     const data = await response.json();
@@ -405,10 +840,37 @@ ${JSON.stringify(results, null, 2)}
   }
 
   shouldAbortOnError(error, step, results) {
+    // If the error is marked as critical (e.g., invalid API key), abort immediately.
+    if (error.isCritical) {
+      console.warn(`Aborting due to critical error: ${error.message}`, step);
+      return true;
+    }
+
+    // If the error is an offline error but the step was part of a process that couldn't be queued
+    // (e.g., a tool running when online, but it internally fails due to a sudden network drop
+    // and this specific tool call isn't designed to be queued by itself),
+    // we might want to abort if we can't proceed.
+    // However, most offline errors should be caught before this, and the task queued.
+    // This check here handles offline errors that might slip through or occur in non-Gemini calls.
+    if (error.isOffline) {
+        // If a specific step/tool is vital and cannot run offline and has no cached alternative.
+        // For now, we don't make shouldAbortOnError more lenient for offline errors here,
+        // as the primary offline handling is queuing at a higher level (processGoal).
+        // If an offline error reaches here during executePlan, it means a tool failed,
+        // and it might count towards maxFailures unless specific logic for that tool says otherwise.
+        console.warn(`Offline error encountered in step ${step.step_number} (${step.tool}). Will count towards max failures unless handled by tool logic.`);
+    }
+
     const failureCount = results.filter(r => !r.success).length;
+    // Ensure MAX_CONSECUTIVE_FAILS is being read from the new AGENT_BEHAVIOR config if that's where it moved,
+    // or from SAFETY if it's still there. Assuming it's in SAFETY for now as per original code.
+    // If it moved to AGENT_BEHAVIOR.MAX_OFFLINE_RETRIES, this would need updating.
+    // The config.js has OFFLINE_QUEUE_MAX_RETRIES in AGENT_BEHAVIOR.
+    // Let's assume MAX_CONSECUTIVE_FAILS is still for general plan execution failures.
     const maxFailures = (this.config.SAFETY && typeof this.config.SAFETY.MAX_CONSECUTIVE_FAILS === 'number')
                         ? this.config.SAFETY.MAX_CONSECUTIVE_FAILS
-                        : 3;
+                        : 3; // Default from original code
+
     return failureCount >= maxFailures;
   }
 
@@ -492,6 +954,16 @@ ${JSON.stringify(results, null, 2)}
   }
 
   async loadApiKey() {
+    // Prefer CaputStorage if available and encryption is desired, otherwise fallback to localStorage
+    if (this.components.storage && typeof this.components.storage.loadApiKey === 'function') {
+        try {
+            const key = await this.components.storage.loadApiKey();
+            if (key) return key;
+        } catch (e) {
+            console.error("Error loading API key from CaputStorage:", e);
+        }
+    }
+    // Fallback to direct localStorage access (original method)
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         return localStorage.getItem(this.config.STORAGE_KEYS.API_KEY);
@@ -503,37 +975,57 @@ ${JSON.stringify(results, null, 2)}
   }
 
   async loadSettings() {
+    // Prefer CaputStorage if available, otherwise fallback to localStorage
+     if (this.components.storage && typeof this.components.storage.loadSettings === 'function') {
+        try {
+            // Assuming loadSettings in CaputStorage returns settings in the expected format
+            // and handles defaults if nothing is stored.
+            return await this.components.storage.loadSettings();
+        } catch (e) {
+            console.error("Error loading settings from CaputStorage:", e);
+        }
+    }
+    // Fallback to direct localStorage access (original method)
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         const settingsString = localStorage.getItem(this.config.STORAGE_KEYS.SETTINGS);
         if (settingsString) {
-          return JSON.parse(settingsString);
+          return { ...(this.config.DEFAULT_SETTINGS || {}), ...JSON.parse(settingsString) };
         }
       }
     } catch (e) {
       console.error("Error loading settings from localStorage:", e);
     }
-    return { ...(this.config.DEFAULT_SETTINGS || {}) }; // Return a copy, ensure DEFAULT_SETTINGS exists
+    return { ...(this.config.DEFAULT_SETTINGS || {}) };
   }
 
-  async setEfficiencyMode(mode) { // Made async to align with potential future async operations like saving settings
+  async setEfficiencyMode(mode) {
     if (this.config.EFFICIENCY_MODES && this.config.EFFICIENCY_MODES[mode]) {
       this.currentMode = mode;
-      const currentSettings = await this.loadSettings(); // await is good practice if loadSettings could become async
+      let currentSettings = await this.loadSettings();
       currentSettings.efficiencyMode = mode;
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem(this.config.STORAGE_KEYS.SETTINGS, JSON.stringify(currentSettings));
+
+      if (this.components.storage && typeof this.components.storage.saveSettings === 'function') {
+          try {
+              await this.components.storage.saveSettings(currentSettings);
+          } catch (e) {
+              console.error("Error saving efficiency mode to CaputStorage:", e);
+          }
+      } else {
+        // Fallback to direct localStorage access
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem(this.config.STORAGE_KEYS.SETTINGS, JSON.stringify(currentSettings));
+          }
+        } catch (e) {
+          console.error("Error saving efficiency mode to localStorage:", e);
         }
-        console.log(`Efficiency mode changed to: ${this.config.EFFICIENCY_MODES[mode].name}`);
-      } catch (e) {
-        console.error("Error saving efficiency mode to localStorage:", e);
       }
+      console.log(`Efficiency mode changed to: ${this.config.EFFICIENCY_MODES[mode].name}`);
     } else {
       console.warn(`Attempted to set invalid efficiency mode: ${mode}`);
     }
   }
-
   clearMemory() {
     this.memory = {
       shortTerm: [],
@@ -546,14 +1038,15 @@ ${JSON.stringify(results, null, 2)}
   reset() {
     this.currentTask = null;
     this.clearMemory();
-    const previousSessionCount = this.stats.sessionsCount || 0; // Ensure previousSessionCount is a number
+    // this.requestQueue = []; // Decide if reset should clear the queue. Generally, no.
+    const previousSessionCount = this.stats.sessionsCount || 0;
     this.stats = {
       tokensUsed: 0,
       toolCallsCount: 0,
       totalCost: 0,
       sessionsCount: previousSessionCount + 1
     };
-    console.log(`Agent reset for new session (${this.stats.sessionsCount}).`);
+    console.log(`Agent reset for new session (${this.stats.sessionsCount}). Offline queue remains.`);
   }
 }
 

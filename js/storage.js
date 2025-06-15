@@ -353,7 +353,17 @@ class CaputStorage {
     });
   }
 
-  // Cache Management
+  // Cache Management - For storing temporary data, potentially for offline use.
+  // Data stored here can be accessed even if the user is offline.
+  // Example uses: caching results of GET API calls, temporary tool states.
+
+  /**
+   * Saves or updates an item in the IndexedDB cache.
+   * @param {string} key - The unique key for the cache item.
+   * @param {*} value - The value to store (can be any structured-clonable type).
+   * @param {number} [ttlMinutes=60] - Time-to-live in minutes. After this duration, the item is considered expired.
+   * @returns {Promise<boolean>} True if successful, rejects on error.
+   */
   async setCacheItem(key, value, ttlMinutes = 60) {
     const db = await this.initializeIndexedDB();
     const transaction = db.transaction(['cache'], 'readwrite');
