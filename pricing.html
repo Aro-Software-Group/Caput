@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>料金プラン - Caput</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <span>Caput</span>
+            </div>
+            <div class="header-controls">
+                <a href="index.html" class="settings-btn" title="ホームに戻る">
+                    <i class="fas fa-home"></i>
+                </a>
+                 <a href="changelog.html" class="changelog-link" title="更新履歴">
+                    <i class="fas fa-history"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="pricing-container">
+        <a href="index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            ホームに戻る
+        </a>
+
+        <div class="pricing-header">
+            <h1>料金プラン</h1>
+            <p>Caput の将来的な料金体系です。お客様のニーズに合わせたプランをご用意しています。</p>
+        </div>
+
+        <div class="beta-notice">
+            <i class="fas fa-info-circle"></i> 現在 Caput はベータ版として提供されており、全ての機能を無料で無制限にご利用いただけます。正式リリース時に以下のプランが適用される予定です。
+        </div>
+
+        <div class="pricing-grid">
+            <!-- 学生プラン -->
+            <div class="plan-card">
+                <h2>学生プラン</h2>
+                <div class="plan-price">¥0</div>
+                <div class="plan-price-note">要学生証認証</div>
+                <div class="plan-target">対象: 学生</div>
+                <ul class="plan-features">
+                    <li>最高品質AI</li>
+                    <li>無制限のツール実行</li>
+                    <li>全ツール利用</li>
+                    <li>プレミアムサポート</li>
+                    <li>無制限プランの全機能が無料</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- コミュニティプラン -->
+            <div class="plan-card">
+                <h2>コミュニティプラン</h2>
+                <div class="plan-price">¥0</div>
+                <div class="plan-price-note">要拡散証明</div>
+                <div class="plan-target">対象: Caputの普及に貢献したコミュニティメンバー</div>
+                <ul class="plan-features">
+                    <li>最高品質AI</li>
+                    <li>月2,500回のツール実行</li>
+                    <li>高リスクツール利用可</li>
+                    <li>Maxプランと同等の機能</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- Proプラン -->
+            <div class="plan-card">
+                <h2>Proプラン</h2>
+                <div class="plan-price">¥1,500<span style="font-size: 16px; color: var(--text-secondary);">/月</span></div>
+                <div class="plan-target">対象: 個人ユーザー、入門者</div>
+                <ul class="plan-features">
+                    <li>効率優先AI</li>
+                    <li>月200回のツール実行</li>
+                    <li>基本的なツール利用可</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- Plusプラン -->
+            <div class="plan-card highlight">
+                <h2>Plusプラン</h2>
+                <div class="plan-price">¥3,000<span style="font-size: 16px; color: var(--text-secondary);">/月</span></div>
+                <div class="plan-target">対象: パワーユーザー</div>
+                <ul class="plan-features">
+                    <li>バランス品質AI</li>
+                    <li>月1,000回のツール実行</li>
+                    <li>データ分析などの高度なツール利用可</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- Maxプラン -->
+            <div class="plan-card">
+                <h2>Maxプラン</h2>
+                <div class="plan-price">¥5,000<span style="font-size: 16px; color: var(--text-secondary);">/月</span></div>
+                <div class="plan-target">対象: プロフェッショナル、個人のヘビーユーザー</div>
+                <ul class="plan-features">
+                    <li>最高品質AI</li>
+                    <li>月2,500回のツール実行</li>
+                    <li>高リスクツールを含むほぼ全ての機能利用可</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- チームプラン -->
+            <div class="plan-card">
+                <h2>チームプラン</h2>
+                <div class="plan-price">¥4,000<span style="font-size: 16px; color: var(--text-secondary);">/月/ユーザー</span></div>
+                <div class="plan-target">対象: 小規模チーム</div>
+                <ul class="plan-features">
+                    <li>Maxプランの全機能</li>
+                    <li>チームでのワークスペース共有</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- 会社プラン (Business) -->
+            <div class="plan-card">
+                <h2>会社プラン (Business)</h2>
+                <div class="plan-price">¥7,500<span style="font-size: 16px; color: var(--text-secondary);">/月/ユーザー</span></div>
+                <div class="plan-target">対象: 中規模以上の企業</div>
+                <ul class="plan-features">
+                    <li>チームプランの機能</li>
+                    <li>監査ログ</li>
+                    <li>ドメイン制限</li>
+                    <li>高度なセキュリティ・管理機能</li>
+                    <li>手厚いサポート</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+
+            <!-- 無制限プラン (Enterprise) -->
+            <div class="plan-card">
+                <h2>無制限プラン (Enterprise)</h2>
+                <div class="plan-price">¥25,000<span style="font-size: 16px; color: var(--text-secondary);">/月</span></div>
+                <div class="plan-target">対象: 大企業、プロフェッショナル</div>
+                <ul class="plan-features">
+                    <li>ツール実行回数無制限</li>
+                    <li>同時タスク数無制限</li>
+                    <li>Caputの全機能を最大限に利用</li>
+                </ul>
+                <a href="#" class="plan-button">詳細を見る</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Apply saved theme
+        const savedSettings = localStorage.getItem('caput_settings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            let theme = settings.theme || 'light';
+            if (theme === 'auto') {
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+    </script>
+</body>
+</html>
