@@ -1,0 +1,42 @@
+{
+  "name": "caput-ai-agent",
+  "version": "1.0.0",
+  "description": "Autonomous AI Agent with 90+ tools powered by Google Gemini",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8080",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aro-software-group/caput"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "automation",
+    "gemini",
+    "javascript",
+    "autonomous",
+    "tools",
+    "productivity"
+  ],
+  "author": "Aro Software Group",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "homepage": "https://github.com/aro-software-group/caput#readme",
+  "bugs": {
+    "url": "https://github.com/aro-software-group/caput/issues"
+  }
+}

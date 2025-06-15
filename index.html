@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caput - 自律型AIエージェント</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <span>Caput</span>
+            </div>
+            <div class="header-controls">
+                <div class="task-efficiency-selector">
+                    <label for="efficiency-mode">効率性モード:</label>
+                    <select id="efficiency-mode">
+                        <option value="efficiency_first">効率優先</option>
+                        <option value="middle" selected>バランス</option>
+                        <option value="best_results">最高品質</option>
+                    </select>
+                </div>
+                <a href="changelog.html" class="changelog-link" title="更新履歴">
+                    <i class="fas fa-history"></i>
+                </a>
+                <button class="settings-btn" id="settings-btn">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel - Chat Interface -->
+        <div class="left-panel">
+            <div class="chat-header">
+                <h2>AI エージェント対話</h2>
+                <div class="status-indicator">
+                    <div class="status-dot ready"></div>
+                    <span>準備完了</span>
+                </div>
+            </div>
+              <div class="chat-messages" id="chat-messages">
+                <!-- Messages will be added dynamically -->
+            </div>
+
+            <div class="chat-input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="user-input" 
+                        placeholder="実現したいゴールを自然な言葉で入力してください..." 
+                        rows="3"></textarea>
+                    <button id="send-btn" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Reasoning & Dashboard -->
+        <div class="right-panel">
+            <!-- Reasoning Panel -->
+            <div class="reasoning-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-lightbulb"></i> 思考プロセス</h3>
+                    <button class="collapse-btn" id="reasoning-collapse">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="reasoning-content" id="reasoning-content">
+                    <div class="reasoning-placeholder">
+                        <i class="fas fa-brain"></i>
+                        <p>タスクが開始されると、ここに思考プロセスが表示されます</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Dashboard -->
+            <div class="usage-dashboard">
+                <div class="panel-header">
+                    <h3><i class="fas fa-chart-bar"></i> 使用状況</h3>
+                </div>
+                <div class="usage-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">トークン使用量</div>
+                        <div class="stat-value" id="token-count">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">推定コスト</div>
+                        <div class="stat-value" id="cost-estimate">¥0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">ツール実行回数</div>
+                        <div class="stat-value" id="tool-count">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Board (Slide-up) -->
+    <div class="task-board" id="task-board">
+        <div class="task-board-header">
+            <h3><i class="fas fa-tasks"></i> タスクボード</h3>
+            <button class="toggle-board-btn" id="toggle-board">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+        <div class="task-board-content">
+            <div class="task-column">
+                <h4>予定 <span class="task-count" id="pending-count">0</span></h4>
+                <div class="task-list" id="pending-tasks"></div>
+            </div>
+            <div class="task-column">
+                <h4>実行中 <span class="task-count" id="doing-count">0</span></h4>
+                <div class="task-list" id="doing-tasks"></div>
+            </div>
+            <div class="task-column">
+                <h4>完了 <span class="task-count" id="done-count">0</span></h4>
+                <div class="task-list" id="done-tasks"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>設定</h3>
+                <button class="close-btn" id="close-settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label for="gemini-api-key">Gemini API キー</label>
+                    <input type="password" id="gemini-api-key" placeholder="Google Gemini API キーを入力">
+                    <small>BYOK方式: キーはローカルに暗号化保存されます</small>
+                </div>
+                <div class="setting-group">
+                    <label for="theme-selector">テーマ</label>
+                    <select id="theme-selector">
+                        <option value="light">ライト</option>
+                        <option value="dark">ダーク</option>
+                        <option value="auto">自動</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>高リスクツール</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enable-scraping">
+                            <span>Webスクレイピング</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enable-security">
+                            <span>セキュリティ診断</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary" id="clear-data">データクリア</button>
+                <button class="btn primary" id="save-settings">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>AI エージェントが作業中...</p>
+        </div>
+    </div>    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/modular-tools.js"></script>
+    <script src="js/agent.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
