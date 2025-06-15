@@ -8,7 +8,7 @@ class CaputApp {
   constructor() {
     this.isInitialized = false;
     this.components = {};
-    this.version = '1.0.0';
+    this.version = '1.0.2-beta';
   }
 
   async initialize() {
@@ -565,11 +565,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.caputApp = caputApp;
 });
 
-// Service Worker registration for PWA features (future enhancement)
+// Service Worker registration for offline support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Note: Service worker implementation would go here for offline support
-    console.log('Service Worker support detected (not implemented yet)');
+    navigator.serviceWorker
+      .register('service-worker.js')
+      .then(() => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
   });
 }
 
