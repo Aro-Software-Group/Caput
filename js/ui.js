@@ -66,6 +66,12 @@ class CaputUI {
       enableSecurity: document.getElementById('enable-security'),
       saveSettings: document.getElementById('save-settings'),
       clearData: document.getElementById('clear-data'),
+
+      // Onboarding Modal
+      onboardingModal: document.getElementById('onboarding-modal'),
+      onboardingUsername: document.getElementById('onboarding-username'),
+      onboardingApiKey: document.getElementById('onboarding-api-key'),
+      onboardingSave: document.getElementById('onboarding-save'),
       
       // Loading Overlay
       loadingOverlay: document.getElementById('loading-overlay')
@@ -125,6 +131,19 @@ class CaputUI {
       this.elements.settingsModal.addEventListener('click', (e) => {
         if (e.target === this.elements.settingsModal) {
           this.hideSettings();
+        }
+      });
+    }
+
+    // Onboarding modal save
+    if (this.elements.onboardingSave) {
+      this.elements.onboardingSave.addEventListener('click', () => this.saveOnboarding());
+    }
+
+    if (this.elements.onboardingModal) {
+      this.elements.onboardingModal.addEventListener('click', (e) => {
+        if (e.target === this.elements.onboardingModal) {
+          this.hideOnboarding();
         }
       });
     }
@@ -504,6 +523,32 @@ class CaputUI {
 
   hideSettings() {
     this.elements.settingsModal.classList.remove('visible');
+  }
+
+  showOnboarding() {
+    this.elements.onboardingModal.classList.add('visible');
+  }
+
+  hideOnboarding() {
+    this.elements.onboardingModal.classList.remove('visible');
+  }
+
+  async saveOnboarding() {
+    const name = this.elements.onboardingUsername.value.trim();
+    const key = this.elements.onboardingApiKey.value.trim();
+
+    if (name) {
+      localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.USER_NAME, name);
+    }
+    if (key) {
+      localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.API_KEY, key);
+    }
+
+    this.hideOnboarding();
+
+    if (window.caputApp) {
+      await window.caputApp.reinitialize();
+    }
   }
 
   loadCurrentSettings() {

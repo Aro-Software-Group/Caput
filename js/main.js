@@ -36,12 +36,19 @@ class CaputApp {
       // Display tools information
       this.components.ui.displayToolsInfo();
 
-      // Try to initialize agent with stored API key
-      try {
-        await this.components.agent.initialize();
-        this.showWelcomeMessage();
-      } catch (error) {
-        this.showApiKeyPrompt();
+      // Check onboarding requirements
+      const apiKey = await this.components.storage.loadApiKey();
+      const userName = this.components.storage.loadUserName();
+
+      if (!apiKey || !userName) {
+        this.components.ui.showOnboarding();
+      } else {
+        try {
+          await this.components.agent.initialize();
+          this.showWelcomeMessage();
+        } catch (error) {
+          this.showApiKeyPrompt();
+        }
       }
 
       // Set up global error handling

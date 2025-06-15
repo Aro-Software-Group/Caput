@@ -147,6 +147,21 @@ class CaputStorage {
     localStorage.removeItem('caput_api_key_hash');
   }
 
+  // User name management
+  saveUserName(name) {
+    if (name) {
+      localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.USER_NAME, name);
+    }
+  }
+
+  loadUserName() {
+    return localStorage.getItem(CAPUT_CONFIG.STORAGE_KEYS.USER_NAME) || null;
+  }
+
+  clearUserName() {
+    localStorage.removeItem(CAPUT_CONFIG.STORAGE_KEYS.USER_NAME);
+  }
+
   // Settings Management
   saveSettings(settings) {
     const sanitized = this.sanitizeSettings(settings);

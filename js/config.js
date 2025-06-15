@@ -79,6 +79,7 @@ const CAPUT_CONFIG = {
   // Storage Keys
   STORAGE_KEYS: {
     API_KEY: 'caput_gemini_api_key',
+    USER_NAME: 'caput_user_name',
     SETTINGS: 'caput_settings',
     CHAT_HISTORY: 'caput_chat_history',
     USAGE_STATS: 'caput_usage_stats',
