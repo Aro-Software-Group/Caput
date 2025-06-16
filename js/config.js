@@ -2,12 +2,57 @@
 const CAPUT_CONFIG = {
   // API Configuration
   API: {
-    GEMINI_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
-    GEMINI_FLASH_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    DEFAULT_MODEL: 'gemini-pro',
+    GEMINI_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/',
+    DEFAULT_MODEL: 'gemini-2.0-flash-001',
     MAX_TOKENS: 8192,
     TEMPERATURE: 0.7,
-    API_TIMEOUT: 30000 // Added: API request timeout in milliseconds
+    API_TIMEOUT: 30000, // API request timeout in milliseconds
+    
+    // Available AI Models
+    MODELS: {
+      'gemini-2.0-flash-001': {
+        name: 'Gemini 2.0 Flash',
+        endpoint: 'gemini-2.0-flash-001:generateContent',
+        description: '高速で効率的な最新モデル（推奨）',
+        maxTokens: 8192,
+        cost: 'low'
+      },
+      'gemini-2.5-flash-preview-05-20': {
+        name: 'Gemini 2.5 Flash Preview',
+        endpoint: 'gemini-2.5-flash-preview-05-20:generateContent',
+        description: '次世代Flash技術のプレビュー版',
+        maxTokens: 8192,
+        cost: 'low'
+      },
+      'gemini-2.5-pro-preview-05-06': {
+        name: 'Gemini 2.5 Pro Preview',
+        endpoint: 'gemini-2.5-pro-preview-05-06:generateContent',
+        description: '最高品質の分析・推論性能',
+        maxTokens: 8192,
+        cost: 'high'
+      },
+      'gemini-2.0-flash-lite-001': {
+        name: 'Gemini 2.0 Flash Lite',
+        endpoint: 'gemini-2.0-flash-lite-001:generateContent',
+        description: 'より軽量で高速なモデル',
+        maxTokens: 4096,
+        cost: 'low'
+      },
+      'gemma-3-27b-it': {
+        name: 'Gemma 3 27B',
+        endpoint: 'gemma-3-27b-it:generateContent',
+        description: 'オープンソースの大規模モデル',
+        maxTokens: 8192,
+        cost: 'medium'
+      },
+      'gemma-3n-e4b-it': {
+        name: 'Gemma 3N E4B',
+        endpoint: 'gemma-3n-e4b-it:generateContent',
+        description: 'エッジ最適化されたGemmaモデル',
+        maxTokens: 4096,
+        cost: 'low'
+      }
+    }
   },
 
   // Task Efficiency Modes
@@ -113,6 +158,7 @@ const CAPUT_CONFIG = {
   DEFAULT_SETTINGS: {
     theme: 'light',
     efficiencyMode: 'middle',
+    aiModel: 'gemini-2.0-flash-001',
     highRiskToolsEnabled: false,
     autoSave: true,
     notificationsEnabled: true,
@@ -121,6 +167,13 @@ const CAPUT_CONFIG = {
 
   // Cost Estimation (JPY per 1K tokens)
   COST_ESTIMATION: {
+    'gemini-2.0-flash-001': 0.25,
+    'gemini-2.5-flash-preview-05-20': 0.3,
+    'gemini-2.5-pro-preview-05-06': 0.75,
+    'gemini-2.0-flash-lite-001': 0.15,
+    'gemma-3-27b-it': 0.4,
+    'gemma-3n-e4b-it': 0.2,
+    // Legacy models
     'gemini-pro': 0.5,
     'gemini-1.5-flash': 0.25,
     'gemini-1.5-pro': 0.75

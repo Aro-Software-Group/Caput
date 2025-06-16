@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡単設定テスト</title>
+    <style>
+        .settings-btn {
+            padding: 10px 20px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .settings-btn:hover {
+            background: #0051D5;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            min-width: 300px;
+        }
+        .close-btn {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>設定ボタンテスト</h1>
+    
+    <button class="settings-btn" id="settings-btn">⚙️ 設定</button>
+    
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <button class="close-btn" id="close-settings">&times;</button>
+            <h3>設定</h3>
+            <p>設定画面が正常に表示されました！</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM読み込み完了');
+            
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsModal = document.getElementById('settings-modal');
+            const closeBtn = document.getElementById('close-settings');
+            
+            console.log('設定ボタン:', settingsBtn);
+            console.log('設定モーダル:', settingsModal);
+            
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', () => {
+                    console.log('設定ボタンクリック！');
+                    settingsModal.classList.add('visible');
+                });
+            }
+            
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    console.log('閉じるボタンクリック！');
+                    settingsModal.classList.remove('visible');
+                });
+            }
+            
+            if (settingsModal) {
+                settingsModal.addEventListener('click', (e) => {
+                    if (e.target === settingsModal) {
+                        console.log('モーダル外クリック！');
+                        settingsModal.classList.remove('visible');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

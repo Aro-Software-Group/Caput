@@ -15,19 +15,21 @@ class CaputUI {
       highRiskToolsEnabled: false
     };
     this.isProcessing = false;
-  }
-
-  async initialize() {
+  }  async initialize() {
+    console.log('=== CaputUI Initialize Start ===');
     this.bindElements();
     this.attachEventListeners();
-    this.loadSettings();
+    await this.loadSettings();
     this.setupTheme();
     this.initializeTaskBoard();
+    this.setupMobileSupport();
     
-    console.log('Caput UI initialized');
-  }
-
-  bindElements() {
+    console.log('=== CaputUI Initialize Complete ===');
+    console.log('Settings button element:', this.elements.settingsBtn);
+    console.log('Settings modal element:', this.elements.settingsModal);
+  }  bindElements() {
+    console.log('=== Binding UI elements ===');
+    
     this.elements = {
       // Header
       efficiencyModeSelect: document.getElementById('efficiency-mode'),
@@ -55,17 +57,19 @@ class CaputUI {
       doneTasks: document.getElementById('done-tasks'),
       pendingCount: document.getElementById('pending-count'),
       doingCount: document.getElementById('doing-count'),
-      doneCount: document.getElementById('done-count'),
-      
-      // Settings Modal
+      doneCount: document.getElementById('done-count'),        // Settings Modal
       settingsModal: document.getElementById('settings-modal'),
       closeSettings: document.getElementById('close-settings'),
       geminiApiKey: document.getElementById('gemini-api-key'),
+      userName: document.getElementById('user-name'),
       themeSelector: document.getElementById('theme-selector'),
+      aiModelSelector: document.getElementById('ai-model-selector'),
+      efficiencyModeSelect: document.getElementById('efficiency-mode-selector'),
       enableScraping: document.getElementById('enable-scraping'),
       enableSecurity: document.getElementById('enable-security'),
       saveSettings: document.getElementById('save-settings'),
-      clearData: document.getElementById('clear-data'),
+      clearHistory: document.getElementById('clear-history'),
+      settingsMessage: document.getElementById('settings-message'),
 
       // Onboarding Modal
       onboardingModal: document.getElementById('onboarding-modal'),
@@ -76,6 +80,13 @@ class CaputUI {
       // Loading Overlay
       loadingOverlay: document.getElementById('loading-overlay')
     };
+
+    // Log missing elements for debugging
+    Object.entries(this.elements).forEach(([key, element]) => {
+      if (!element) {
+        console.warn(`Element not found: ${key} (${key})`);
+      }
+    });    console.log('Elements bound:', Object.keys(this.elements).filter(key => this.elements[key]));
   }
 
   attachEventListeners() {
@@ -86,20 +97,30 @@ class CaputUI {
         e.preventDefault();
         this.sendMessage();
       }
-    });
-
-    // Settings - Fixed event listeners
+    });    // Settings - Enhanced event listeners with touch support
     if (this.elements.settingsBtn) {
-      this.elements.settingsBtn.addEventListener('click', () => this.showSettings());
+      console.log('Settings button found, adding event listeners');
+      // Add both click and touchstart for better mobile responsiveness
+      this.elements.settingsBtn.addEventListener('click', (e) => {
+        console.log('Settings button clicked');
+        e.preventDefault();
+        this.showSettings();
+      });
+      this.elements.settingsBtn.addEventListener('touchstart', (e) => {
+        console.log('Settings button touched');
+        e.preventDefault();
+        this.showSettings();
+      }, { passive: false });
+    } else {
+      console.error('Settings button element not found!');
     }
     if (this.elements.closeSettings) {
       this.elements.closeSettings.addEventListener('click', () => this.hideSettings());
-    }
-    if (this.elements.saveSettings) {
+    }    if (this.elements.saveSettings) {
       this.elements.saveSettings.addEventListener('click', () => this.saveSettings());
     }
-    if (this.elements.clearData) {
-      this.elements.clearData.addEventListener('click', () => this.clearAllData());
+    if (this.elements.clearHistory) {
+      this.elements.clearHistory.addEventListener('click', () => this.clearChatHistory());
     }
 
     // Efficiency mode
@@ -167,27 +188,44 @@ class CaputUI {
 
     // Show typing indicator
     this.showTypingIndicator();
-    this.clearReasoningPanel();
-
-    try {
+    this.clearReasoningPanel();    try {
       // Initialize agent if needed
       if (!window.caputAgent) {
         throw new Error('AI エージェントが初期化されていません');
       }
 
+      // Check if API key is available
+      if (!window.caputAgent.apiKey && navigator.onLine) {
+        throw new Error('API キーが設定されていません。設定画面でAPI キーを入力してください。');
+      }
+
       // Process the goal
-      const result = await window.caputAgent.processGoal(message);      // Hide typing indicator
+      const result = await window.caputAgent.processGoal(message);
+      
+      // Hide typing indicator
       this.hideTypingIndicator();
 
       // Display results
-      await this.displayResults(result);    } catch (error) {
+      await this.displayResults(result);
+    } catch (error) {
       this.hideTypingIndicator();
-      this.addChatMessage(`エラーが発生しました: ${error.message}`, 'agent', 'error');
+      
+      // Handle different types of errors
+      let errorMessage = error.message;
+      if (error.isQueued) {
+        errorMessage = 'オフラインのため、リクエストをキューに追加しました。オンライン時に処理されます。';
+        this.addChatMessage(errorMessage, 'agent', 'warning');
+      } else if (error.isOfflineNoQueue) {
+        this.addChatMessage(errorMessage, 'agent', 'warning');
+      } else {
+        this.addChatMessage(`エラーが発生しました: ${errorMessage}`, 'agent', 'error');
+      }
+      
       this.addReasoningStep({
         event: 'エラー',
         tool: 'system',
         status: 'error',
-        metadata: { error: error.message },
+        metadata: { error: errorMessage },
         timestamp: new Date()
       });
     } finally {
@@ -514,15 +552,30 @@ class CaputUI {
       <div style="font-size: 12px; color: var(--text-tertiary);">${task.tool}</div>
     `;
     return taskDiv;
-  }
-
-  showSettings() {
+  }  showSettings() {
+    console.log('showSettings called');
+    if (!this.elements.settingsModal) {
+      console.error('Settings modal element not found');
+      return;
+    }
     this.elements.settingsModal.classList.add('visible');
     this.loadCurrentSettings();
+    
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    console.log('Settings modal should now be visible');
   }
-
   hideSettings() {
+    console.log('hideSettings called');
+    if (!this.elements.settingsModal) {
+      console.error('Settings modal element not found');
+      return;
+    }
     this.elements.settingsModal.classList.remove('visible');
+    
+    // Restore body scroll
+    document.body.style.overflow = '';
+    console.log('Settings modal hidden');
   }
 
   showOnboarding() {
@@ -550,7 +603,6 @@ class CaputUI {
       await window.caputApp.reinitialize();
     }
   }
-
   loadCurrentSettings() {
     // Load API key (masked)
     const apiKey = localStorage.getItem(CAPUT_CONFIG.STORAGE_KEYS.API_KEY);
@@ -558,53 +610,109 @@ class CaputUI {
       this.elements.geminiApiKey.value = '••••••••••••••••';
     }
 
-    // Load other settings
-    this.elements.themeSelector.value = this.settings.theme;
+    // Load user name
+    const userName = localStorage.getItem(CAPUT_CONFIG.STORAGE_KEYS.USER_NAME) || '';
+    if (this.elements.userName) {
+      this.elements.userName.value = userName;
+    }
+
+    // Load other settings    this.elements.themeSelector.value = this.settings.theme;
+    if (this.elements.aiModelSelector) {
+      this.elements.aiModelSelector.value = this.settings.aiModel || CAPUT_CONFIG.DEFAULT_SETTINGS.aiModel;
+    }
+    if (this.elements.efficiencyModeSelect) {
+      this.elements.efficiencyModeSelect.value = this.settings.efficiencyMode || 'middle';
+    }
     this.elements.enableScraping.checked = this.settings.highRiskToolsEnabled;
     this.elements.enableSecurity.checked = this.settings.highRiskToolsEnabled;
-  }
-
-  async saveSettings() {
+  }  async saveSettings() {
     try {
       // Save API key if changed
       const apiKey = this.elements.geminiApiKey.value;
       if (apiKey && !apiKey.includes('•')) {
-        localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.API_KEY, apiKey);
+        // Use the storage component for secure API key storage
+        if (window.caputApp && window.caputApp.components.storage) {
+          await window.caputApp.components.storage.saveApiKey(apiKey);
+        } else {
+          // Fallback to localStorage (less secure)
+          localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.API_KEY, apiKey);
+        }
         
         // Reinitialize agent with new API key
         if (window.caputAgent) {
           try {
+            window.caputAgent.apiKey = apiKey;
             await window.caputAgent.initialize();
-            this.showNotification('API キーが設定されました', 'success');
+            this.showSettingsMessage('API キーが設定されました', 'success');
           } catch (error) {
-            this.showNotification('API キーの検証に失敗しました', 'error');
+            this.showSettingsMessage('API キーの検証に失敗しました', 'error');
             console.error('Failed to initialize agent:', error);
           }
         }
       }
 
-      // Save other settings
+      // Save user name
+      const userName = this.elements.userName.value.trim();
+      if (userName) {
+        localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.USER_NAME, userName);
+      }      // Save other settings
       this.settings.theme = this.elements.themeSelector.value;
+      this.settings.aiModel = this.elements.aiModelSelector.value;
       this.settings.highRiskToolsEnabled = this.elements.enableScraping.checked;
-      this.settings.efficiencyMode = this.elements.efficiencyModeSelect.value;
+      this.settings.efficiencyMode = this.elements.efficiencyModeSelect?.value || this.settings.efficiencyMode;
 
-      localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
+      // Use storage component if available
+      if (window.caputApp && window.caputApp.components.storage) {
+        await window.caputApp.components.storage.saveSettings(this.settings);
+      } else {
+        // Fallback to localStorage
+        localStorage.setItem(CAPUT_CONFIG.STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
+      }
 
       // Apply theme
       this.applyTheme(this.settings.theme);
 
       // Apply efficiency mode
       if (window.caputAgent && this.settings.efficiencyMode) {
-        window.caputAgent.setEfficiencyMode(this.settings.efficiencyMode);
-      }
-
-      this.hideSettings();
-      this.showNotification('設定を保存しました', 'success');
+        await window.caputAgent.setEfficiencyMode(this.settings.efficiencyMode);
+      }      this.hideSettings();
+      this.showSettingsMessage('設定を保存しました', 'success');
       
     } catch (error) {
       console.error('Failed to save settings:', error);
-      this.showNotification('設定の保存に失敗しました', 'error');
+      this.showSettingsMessage('設定の保存に失敗しました', 'error');
     }
+  }
+
+  clearChatHistory() {
+    if (confirm('チャット履歴をすべて消去しますか？この操作は元に戻せません。')) {
+      // Clear chat history from localStorage
+      localStorage.removeItem('chatHistory');
+      
+      // Clear chat messages from UI
+      if (this.elements.chatMessages) {
+        this.elements.chatMessages.innerHTML = '';
+      }
+      
+      // Clear in-memory chat history
+      this.chatHistory = [];
+      
+      this.showSettingsMessage('チャット履歴を消去しました', 'success');
+    }
+  }
+
+  showSettingsMessage(message, type) {
+    if (!this.elements.settingsMessage) return;
+    
+    const messageElement = this.elements.settingsMessage;
+    messageElement.textContent = message;
+    messageElement.className = `settings-message ${type}`;
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      messageElement.textContent = '';
+      messageElement.className = 'settings-message';
+    }, 3000);
   }
 
   clearAllData() {
@@ -614,12 +722,21 @@ class CaputUI {
       setTimeout(() => location.reload(), 1000);
     }
   }
-
-  loadSettings() {
-    const saved = localStorage.getItem(CAPUT_CONFIG.STORAGE_KEYS.SETTINGS);
-    if (saved) {
-      this.settings = { ...CAPUT_CONFIG.DEFAULT_SETTINGS, ...JSON.parse(saved) };
-    } else {
+  async loadSettings() {
+    try {
+      if (window.caputApp && window.caputApp.components.storage) {
+        this.settings = await window.caputApp.components.storage.loadSettings();
+      } else {
+        // Fallback to localStorage
+        const saved = localStorage.getItem(CAPUT_CONFIG.STORAGE_KEYS.SETTINGS);
+        if (saved) {
+          this.settings = { ...CAPUT_CONFIG.DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        } else {
+          this.settings = { ...CAPUT_CONFIG.DEFAULT_SETTINGS };
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
       this.settings = { ...CAPUT_CONFIG.DEFAULT_SETTINGS };
     }
   }
@@ -806,6 +923,108 @@ class CaputUI {
     if (indicator) {
       indicator.remove();
     }
+  }
+
+  setupMobileSupport() {
+    // Add touch event handling for mobile devices
+    this.addTouchSupport();
+    this.setupSwipeGestures();
+    this.improveModalMobileExperience();
+  }
+
+  addTouchSupport() {
+    // Improve button touch targets
+    const buttons = document.querySelectorAll('button, .btn');
+    buttons.forEach(button => {
+      button.style.minHeight = '44px';
+      button.style.minWidth = '44px';
+    });
+
+    // Add visual feedback for touch events
+    document.addEventListener('touchstart', (e) => {
+      if (e.target.matches('button, .btn, .task-item, .message')) {
+        e.target.style.transform = 'scale(0.95)';
+        e.target.style.transition = 'transform 0.1s ease';
+      }
+    });
+
+    document.addEventListener('touchend', (e) => {
+      if (e.target.matches('button, .btn, .task-item, .message')) {
+        setTimeout(() => {
+          e.target.style.transform = '';
+        }, 100);
+      }
+    });
+  }
+
+  setupSwipeGestures() {
+    let startY = 0;
+    let startTime = 0;
+
+    // Task board swipe gestures
+    const taskBoard = this.elements.taskBoard;
+    if (taskBoard) {
+      taskBoard.addEventListener('touchstart', (e) => {
+        startY = e.touches[0].clientY;
+        startTime = Date.now();
+      });
+
+      taskBoard.addEventListener('touchend', (e) => {
+        const endY = e.changedTouches[0].clientY;
+        const endTime = Date.now();
+        const deltaY = endY - startY;
+        const deltaTime = endTime - startTime;
+
+        // Swipe up to expand, swipe down to collapse
+        if (deltaTime < 300 && Math.abs(deltaY) > 50) {
+          if (deltaY < -50) {
+            // Swipe up - expand
+            taskBoard.classList.add('expanded');
+          } else if (deltaY > 50) {
+            // Swipe down - collapse
+            taskBoard.classList.remove('expanded');
+          }
+        }
+      });
+    }
+  }
+
+  improveModalMobileExperience() {
+    // Close modal when tapping outside
+    document.addEventListener('touchstart', (e) => {
+      const settingsModal = this.elements.settingsModal;
+      const onboardingModal = this.elements.onboardingModal;
+      
+      if (settingsModal && settingsModal.classList.contains('visible')) {
+        if (e.target === settingsModal) {
+          this.hideSettings();
+        }
+      }
+      
+      if (onboardingModal && onboardingModal.classList.contains('visible')) {
+        if (e.target === onboardingModal) {
+          this.hideOnboarding();
+        }
+      }
+    });
+
+    // Prevent zoom on input focus
+    const inputs = document.querySelectorAll('input, textarea, select');
+    inputs.forEach(input => {
+      input.addEventListener('focus', () => {
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+          viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        }
+      });
+      
+      input.addEventListener('blur', () => {
+        const viewport = document.querySelector('meta[name=viewport]');
+        if (viewport) {
+          viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+        }
+      });
+    });
   }
 }
 

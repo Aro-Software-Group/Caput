@@ -138,8 +138,8 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>初期設定</h3>
-            </div>
-            <div class="modal-body">
+            </div>            <div class="modal-body">
+                <div id="settings-message" class="settings-message"></div>
                 <div class="setting-group">
                     <label for="onboarding-username">ユーザーネーム</label>
                     <input type="text" id="onboarding-username" placeholder="ユーザーネームを入力">
@@ -153,48 +153,129 @@
                 <button class="btn primary" id="onboarding-save">開始</button>
             </div>
         </div>
-    </div>
-
-    <!-- Settings Modal -->
+    </div>    <!-- Settings Modal -->
     <div class="modal" id="settings-modal">
-        <div class="modal-content">
+        <div class="modal-content settings-modal-content">
             <div class="modal-header">
-                <h3>設定</h3>
+                <h3><i class="fas fa-cog"></i> 設定</h3>
                 <button class="close-btn" id="close-settings">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="modal-body">
-                <div class="setting-group">
-                    <label for="gemini-api-key">Gemini API キー</label>
-                    <input type="password" id="gemini-api-key" placeholder="Google Gemini API キーを入力">
-                    <small>BYOK方式: キーはローカルに暗号化保存されます</small>
-                </div>
-                <div class="setting-group">
-                    <label for="theme-selector">テーマ</label>
-                    <select id="theme-selector">
-                        <option value="light">ライト</option>
-                        <option value="dark">ダーク</option>
-                        <option value="auto">自動</option>
-                    </select>
-                </div>
-                <div class="setting-group">
-                    <label>高リスクツール</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enable-scraping">
-                            <span>Webスクレイピング</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="enable-security">
-                            <span>セキュリティ診断</span>
-                        </label>
+            <div class="modal-body settings-modal-body">
+                <div class="settings-tabs">
+                    <div class="tab-nav">
+                        <button class="tab-btn active" data-tab="general">
+                            <i class="fas fa-user"></i> 一般
+                        </button>
+                        <button class="tab-btn" data-tab="ai">
+                            <i class="fas fa-robot"></i> AI設定
+                        </button>
+                        <button class="tab-btn" data-tab="appearance">
+                            <i class="fas fa-palette"></i> 外観
+                        </button>
+                        <button class="tab-btn" data-tab="advanced">
+                            <i class="fas fa-cogs"></i> 詳細
+                        </button>
+                    </div>
+                    
+                    <div class="tab-content">
+                        <!-- General Tab -->
+                        <div class="tab-pane active" id="general-tab">
+                            <div class="setting-group">
+                                <label for="user-name">
+                                    <i class="fas fa-user"></i> ユーザー名
+                                </label>
+                                <input type="text" id="user-name" placeholder="ユーザー名を入力">
+                                <small>AIエージェントとの対話で使用される名前です</small>
+                            </div>
+                            <div class="setting-group">
+                                <label for="gemini-api-key">
+                                    <i class="fas fa-key"></i> Gemini API キー
+                                </label>
+                                <div class="input-with-btn">
+                                    <input type="password" id="gemini-api-key" placeholder="Google Gemini API キーを入力">
+                                    <button type="button" class="toggle-password" onclick="togglePassword('gemini-api-key')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <small><i class="fas fa-shield-alt"></i> BYOK方式: キーはローカルに暗号化保存されます</small>
+                            </div>
+                        </div>
+
+                        <!-- AI Settings Tab -->
+                        <div class="tab-pane" id="ai-tab">
+                            <div class="setting-group">
+                                <label for="ai-model-selector">
+                                    <i class="fas fa-brain"></i> AIモデル
+                                </label>
+                                <select id="ai-model-selector">
+                                    <option value="gemini-2.0-flash-001">Gemini 2.0 Flash (推奨)</option>
+                                    <option value="gemini-2.5-flash-preview-05-20">Gemini 2.5 Flash Preview</option>
+                                    <option value="gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro Preview</option>
+                                    <option value="gemini-2.0-flash-lite-001">Gemini 2.0 Flash Lite</option>
+                                    <option value="gemma-3-27b-it">Gemma 3 27B</option>
+                                    <option value="gemma-3n-e4b-it">Gemma 3N E4B</option>
+                                </select>
+                                <small>用途に応じてモデルを選択してください。Flashは高速、Proは高精度です。</small>
+                            </div>
+                            <div class="setting-group">
+                                <label for="efficiency-mode-selector">
+                                    <i class="fas fa-tachometer-alt"></i> 効率性モード
+                                </label>
+                                <select id="efficiency-mode-selector">
+                                    <option value="efficiency_first">効率優先</option>
+                                    <option value="middle">バランス</option>
+                                    <option value="best_results">最高品質</option>
+                                </select>
+                                <small>計画のステップ数とAIモデルの選択に影響します</small>
+                            </div>
+                        </div>
+
+                        <!-- Appearance Tab -->
+                        <div class="tab-pane" id="appearance-tab">
+                            <div class="setting-group">
+                                <label for="theme-selector">
+                                    <i class="fas fa-moon"></i> テーマ
+                                </label>
+                                <select id="theme-selector">
+                                    <option value="light">ライト</option>
+                                    <option value="dark">ダーク</option>
+                                    <option value="auto">自動</option>
+                                </select>
+                                <small>システムの設定に従って自動切り替えも可能です</small>
+                            </div>
+                        </div>                        <!-- Advanced Tab -->
+                        <div class="tab-pane" id="advanced-tab">
+                            <div class="setting-group">
+                                <label>
+                                    <i class="fas fa-exclamation-triangle"></i> 高リスクツール
+                                </label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="enable-scraping">
+                                        <span class="checkmark"></span>
+                                        <span>Webスクレイピング</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="enable-security">
+                                        <span class="checkmark"></span>
+                                        <span>セキュリティ診断</span>
+                                    </label>
+                                </div>
+                                <small>これらのツールは慎重に使用してください</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn secondary" id="clear-data">データクリア</button>
-                <button class="btn primary" id="save-settings">保存</button>
+                <button class="btn secondary" id="clear-history">
+                    <i class="fas fa-trash"></i> 履歴消去
+                </button>
+                <button class="btn primary" id="save-settings">
+                    <i class="fas fa-save"></i> 保存
+                </button>
             </div>
         </div>
     </div>
@@ -205,12 +286,93 @@
             <div class="loading-spinner"></div>
             <p>AI エージェントが作業中...</p>
         </div>
-    </div>    <!-- Scripts -->
+    </div>    <!-- Debug Script -->
+    <script>
+        // Simple debug to check if elements exist and events are working
+        window.addEventListener('load', () => {
+            console.log('=== Caput Debug Information ===');
+            console.log('Settings button:', document.getElementById('settings-btn'));
+            console.log('Settings modal:', document.getElementById('settings-modal'));
+            console.log('CaputUI instance:', window.caputUI);
+            console.log('CaputApp instance:', window.caputApp);
+            
+            // Add direct event listener as backup
+            const settingsBtn = document.getElementById('settings-btn');
+            if (settingsBtn) {
+                console.log('Adding direct event listener to settings button');
+                settingsBtn.addEventListener('click', (e) => {
+                    console.log('Direct event listener triggered');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = document.getElementById('settings-modal');
+                    if (modal) {
+                        modal.classList.add('visible');
+                        document.body.style.overflow = 'hidden';
+                        console.log('Modal shown via direct event');
+                    } else {
+                        console.error('Modal not found!');
+                    }
+                }, true); // Use capture phase
+            } else {
+                console.error('Settings button not found!');
+            }
+            
+            // Add close functionality
+            const closeBtn = document.getElementById('close-settings');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    console.log('Close button clicked');
+                    const modal = document.getElementById('settings-modal');
+                    if (modal) {
+                        modal.classList.remove('visible');
+                        document.body.style.overflow = '';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/modular-tools.js"></script>
     <script src="js/agent.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/main.js"></script>
+    <script>
+        // Password toggle function
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.parentElement.querySelector('.toggle-password i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                button.className = 'fas fa-eye';
+            }
+        }
+
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all buttons and panes
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanes.forEach(pane => pane.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding pane
+                    this.classList.add('active');
+                    document.getElementById(targetTab + '-tab').classList.add('active');
+                });
+            });
+        });
+    </script>
 </body>
 </html>

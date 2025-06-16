@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>設定ボタンデバッグ - Caput</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <h1>設定ボタンデバッグページ</h1>
+    
+    <div id="debug-info">
+        <h2>デバッグ情報</h2>
+        <div id="debug-output"></div>
+    </div>
+
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <span>Caput</span>
+            </div>
+            <div class="header-controls">
+                <button class="settings-btn" id="settings-btn">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>設定</h3>
+                <button class="close-btn" id="close-settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="settings-message" class="settings-message"></div>
+                <div class="setting-group">
+                    <label for="gemini-api-key">Gemini API キー</label>
+                    <input type="password" id="gemini-api-key" placeholder="Google Gemini API キーを入力">
+                    <small>BYOK方式: キーはローカルに暗号化保存されます</small>
+                </div>
+                <div class="setting-group">
+                    <label for="user-name">ユーザー名</label>
+                    <input type="text" id="user-name" placeholder="ユーザー名を入力">
+                    <small>AIエージェントとの対話で使用される名前です</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn secondary" id="clear-history">履歴消去</button>
+                <button class="btn primary" id="save-settings">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function debugLog(message) {
+            const output = document.getElementById('debug-output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            console.log(message);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            debugLog('DOM loaded');
+            
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsModal = document.getElementById('settings-modal');
+            const closeSettings = document.getElementById('close-settings');
+            
+            debugLog(`設定ボタン: ${settingsBtn ? '見つかりました' : '見つかりませんでした'}`);
+            debugLog(`設定モーダル: ${settingsModal ? '見つかりました' : '見つかりませんでした'}`);
+            debugLog(`閉じるボタン: ${closeSettings ? '見つかりました' : '見つかりませんでした'}`);
+            
+            if (settingsBtn) {
+                settingsBtn.addEventListener('click', (e) => {
+                    debugLog('設定ボタンがクリックされました');
+                    e.preventDefault();
+                    if (settingsModal) {
+                        settingsModal.classList.add('visible');
+                        debugLog('設定モーダルを表示しました');
+                    } else {
+                        debugLog('エラー: 設定モーダルが見つかりません');
+                    }
+                });
+            }
+            
+            if (closeSettings) {
+                closeSettings.addEventListener('click', () => {
+                    debugLog('閉じるボタンがクリックされました');
+                    if (settingsModal) {
+                        settingsModal.classList.remove('visible');
+                        debugLog('設定モーダルを非表示にしました');
+                    }
+                });
+            }
+            
+            if (settingsModal) {
+                settingsModal.addEventListener('click', (e) => {
+                    if (e.target === settingsModal) {
+                        debugLog('モーダル外がクリックされました');
+                        settingsModal.classList.remove('visible');
+                        debugLog('設定モーダルを非表示にしました');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

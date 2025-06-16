@@ -9,18 +9,17 @@ class ModularToolsRegistry {
 
   async initialize() {
     console.log('Initializing Modular Tools Registry...');
-    
-    // Tool modules to load
+      // Tool modules to load
     const toolModules = [
-      { name: 'SearchTools', file: '../tools/search.js' },
-      { name: 'ContentTools', file: '../tools/content.js' },
-      { name: 'AnalysisTools', file: '../tools/analysis.js' },
-      { name: 'ProductivityTools', file: '../tools/productivity.js' },
-      { name: 'DocumentTools', file: '../tools/document.js' },
-      { name: 'AutomationTools', file: '../tools/automation.js' },
-      { name: 'SecurityTools', file: '../tools/security.js' },
-      { name: 'IntegrationTools', file: '../tools/integration.js' },
-      { name: 'SystemTools', file: '../tools/system.js' }
+      { name: 'SearchTools', file: './tools/search.js' },
+      { name: 'ContentTools', file: './tools/content.js' },
+      { name: 'AnalysisTools', file: './tools/analysis.js' },
+      { name: 'ProductivityTools', file: './tools/productivity.js' },
+      { name: 'DocumentTools', file: './tools/document.js' },
+      { name: 'AutomationTools', file: './tools/automation.js' },
+      { name: 'SecurityTools', file: './tools/security.js' },
+      { name: 'IntegrationTools', file: './tools/integration.js' },
+      { name: 'SystemTools', file: './tools/system.js' }
     ];
 
     // Load all tool modules
@@ -30,9 +29,15 @@ class ModularToolsRegistry {
       } catch (error) {
         console.warn(`Failed to load tool module ${module.name}:`, error);
       }
+    }    console.log(`Modular Tools Registry initialized: ${this.toolRegistry.size} tools from ${this.loadedModules.size} modules`);
+    
+    // Log available tools for debugging
+    if (this.toolRegistry.size > 0) {
+      console.log('Available tools:', Array.from(this.toolRegistry.keys()));
+    } else {
+      console.warn('No tools were loaded successfully');
     }
-
-    console.log(`Modular Tools Registry initialized: ${this.toolRegistry.size} tools from ${this.loadedModules.size} modules`);
+    
     return this;
   }
 
@@ -97,16 +102,19 @@ class ModularToolsRegistry {
       callCount: 0
     });
   }
-
   async executeTool(toolName, parameters, context = {}) {
     const tool = this.toolRegistry.get(toolName);
     if (!tool) {
-      throw new Error(`Tool "${toolName}" not found`);
+      const error = new Error(`Tool "${toolName}" not found`);
+      error.isToolNotFound = true;
+      throw error;
     }
 
     // Check risk level and permissions
     if (tool.riskLevel === 'high' && !context.highRiskEnabled) {
-      throw new Error(`High-risk tool "${toolName}" requires explicit permission`);
+      const error = new Error(`High-risk tool "${toolName}" requires explicit permission`);
+      error.isPermissionDenied = true;
+      throw error;
     }
 
     // Increment call count
@@ -144,6 +152,11 @@ class ModularToolsRegistry {
     } catch (error) {
       const executionTime = performance.now() - executionStart;
       
+      // Check if it's a network error that might indicate offline status
+      if (error.name === 'TypeError' && error.message.toLowerCase().includes('failed to fetch')) {
+        error.isOffline = true;
+      }
+      
       this.executionHistory.push({
         toolName,
         parameters,
@@ -180,6 +193,22 @@ class ModularToolsRegistry {
     }));
   }
 
+  // Get list of all available tools
+  getToolList() {
+    const tools = [];
+    for (const [name, tool] of this.toolRegistry) {
+      tools.push({
+        name: name,
+        description: tool.description || 'No description available',
+        category: tool.category || 'unknown',
+        module: tool.module || 'unknown',
+        riskLevel: tool.riskLevel || 'low',
+        callCount: tool.callCount || 0
+      });
+    }
+    return tools;
+  }
+
   // Get tools by category
   getToolsByCategory(category) {
     return this.getAllTools().filter(tool => tool.category === category);
@@ -187,7 +216,53 @@ class ModularToolsRegistry {
 
   // Get tools by module
   getToolsByModule(moduleName) {
-    return this.getAllTools().filter(tool => tool.module === moduleName);
+    const tools = [];
+    for (const [name, tool] of this.toolRegistry) {
+      if (tool.module === moduleName) {
+        tools.push({
+          name: name,
+          description: tool.description || 'No description available',
+          category: tool.category || 'unknown',
+          riskLevel: tool.riskLevel || 'low',
+          callCount: tool.callCount || 0,
+          ...tool
+        });
+      }
+    }
+    return tools;
+  }
+
+  // Get tool by name
+  getTool(toolName) {
+    return this.toolRegistry.get(toolName);
+  }
+
+  // Get execution statistics
+  getExecutionStats() {
+    return {
+      totalExecutions: this.executionHistory.length,
+      successfulExecutions: this.executionHistory.filter(exec => exec.success).length,
+      failedExecutions: this.executionHistory.filter(exec => !exec.success).length,
+      averageExecutionTime: this.executionHistory.length > 0 
+        ? this.executionHistory.reduce((sum, exec) => sum + exec.executionTime, 0) / this.executionHistory.length 
+        : 0,
+      mostUsedTools: this.getMostUsedTools(),
+      recentExecutions: this.executionHistory.slice(-10)
+    };
+  }
+
+  // Get most used tools
+  getMostUsedTools(limit = 5) {
+    const toolUsage = new Map();
+    
+    for (const [name, tool] of this.toolRegistry) {
+      toolUsage.set(name, tool.callCount || 0);
+    }
+    
+    return Array.from(toolUsage.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([name, count]) => ({ name, count }));
   }
 
   // Get tool categories

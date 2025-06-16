@@ -25,18 +25,19 @@ class CaputAgent {
 
   async initialize() {
     // Load API key and settings
-    this.apiKey = await this.loadApiKey(); // This uses localStorage directly, consider moving to CaputStorage if encrypted key is desired there
-    if (!this.apiKey) {
-      // Don't throw if offline, allow app to load and potentially use cached data or queue tasks
-      if (!this.isOffline) {
-        throw new Error('Gemini API キーが設定されていません (オンライン時)');
-      }
+    this.apiKey = await this.loadApiKey();
+    
+    // Load user settings
+    const settings = await this.loadSettings();
+    this.currentMode = settings.efficiencyMode || 'middle';
+
+    // Only throw error if online and no API key
+    if (!this.apiKey && !this.isOffline) {
+      console.warn('Gemini API キーが設定されていません (オンライン時)');
+      // Don't throw here, let the UI handle API key prompt
+    } else if (!this.apiKey && this.isOffline) {
       console.warn('Gemini API キーが設定されていません (オフライン)');
     }
-
-    // Load user settings
-    const settings = await this.loadSettings(); // Also uses localStorage
-    this.currentMode = settings.efficiencyMode || 'middle';
 
     // Load request queue from storage
     if (this.components.storage) {
@@ -378,8 +379,29 @@ class CaputAgent {
   }
 
   async generatePlan(analysis) {
+    // Validate tools registry
+    if (!this.tools) {
+      throw new Error('Tools registry not initialized');
+    }
+    if (typeof this.tools.getToolList !== 'function') {
+      throw new Error('Tools registry getToolList method not available');
+    }
+
     // No direct try-catch here for offline, processGoal will handle it.
     const mode = this.config.EFFICIENCY_MODES[this.currentMode];
+
+    let toolsList = 'ツールリストを取得できません';
+    try {
+      const tools = this.tools.getToolList();
+      if (Array.isArray(tools) && tools.length > 0) {
+        toolsList = tools.map(tool => `- ${tool.name}: ${tool.description}`).join('\n');
+      } else {
+        toolsList = '利用可能なツールがありません';
+      }
+    } catch (error) {
+      console.error('Failed to get tool list:', error);
+      toolsList = `ツールリスト取得エラー: ${error.message}`;
+    }
 
     const prompt = `
 Task Efficiency Mode: ${mode.name}
@@ -390,7 +412,7 @@ Task Efficiency Mode: ${mode.name}
 ${JSON.stringify(analysis, null, 2)}
 
 利用可能なツール一覧:
-${this.tools.getToolList().map(tool => `- ${tool.name}: ${tool.description}`).join('\n')}
+${toolsList}
 
 上記の制約の範囲で、効率的な実行計画を生成してください。
 以下の形式でJSON応答：
@@ -694,9 +716,21 @@ ${JSON.stringify(results, null, 2)}
 
 
     const mode = this.config.EFFICIENCY_MODES[this.currentMode];
-    const modelEndpoint = mode.preferredModel === 'gemini-1.5-flash'
-      ? this.config.API.GEMINI_FLASH_ENDPOINT
-      : this.config.API.GEMINI_ENDPOINT;
+    
+    // Get user's preferred AI model from settings
+    let selectedModel = this.config.API.DEFAULT_MODEL;
+    if (window.caputApp && window.caputApp.components.ui && window.caputApp.components.ui.settings) {
+      selectedModel = window.caputApp.components.ui.settings.aiModel || selectedModel;
+    }
+    
+    // Use the selected model's endpoint
+    const modelConfig = this.config.API.MODELS[selectedModel];
+    if (!modelConfig) {
+      console.warn(`Model ${selectedModel} not found, using default`);
+      selectedModel = this.config.API.DEFAULT_MODEL;
+    }
+    
+    const modelEndpoint = `${this.config.API.GEMINI_ENDPOINT}${this.config.API.MODELS[selectedModel].endpoint}`;
 
     const controller = new AbortController();
     const timeoutValue = (this.config.API && typeof this.config.API.API_TIMEOUT === 'number') ? this.config.API.API_TIMEOUT : 30000;

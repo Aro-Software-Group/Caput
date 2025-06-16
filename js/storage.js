@@ -1,9 +1,8 @@
 // Caput Storage Manager - Local Data Management & Encryption
-class CaputStorage {
-  constructor() {
+class CaputStorage {  constructor() {
     this.isSupported = this.checkSupport();
     this.encryptionKey = null;
-    this.initialize();
+    // Note: Don't call initialize here, it's called explicitly in main.js
   }
 
   checkSupport() {
@@ -111,7 +110,6 @@ class CaputStorage {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     localStorage.setItem('caput_api_key_hash', JSON.stringify(hashArray));
   }
-
   async loadApiKey() {
     const encryptedData = localStorage.getItem(CAPUT_CONFIG.STORAGE_KEYS.API_KEY);
     if (!encryptedData) {
@@ -119,10 +117,22 @@ class CaputStorage {
     }
 
     try {
+      // Try to parse as encrypted JSON first
       const parsed = JSON.parse(encryptedData);
-      const decrypted = await this.decrypt(parsed);
-      return decrypted.apiKey;
+      if (parsed && typeof parsed === 'object' && parsed.iv && parsed.data) {
+        const decrypted = await this.decrypt(parsed);
+        return decrypted.apiKey;
+      } else {
+        // If it's not properly encrypted JSON, treat as plain text (legacy)
+        console.warn('Found legacy API key, will re-encrypt on next save');
+        return encryptedData;
+      }
     } catch (error) {
+      // If JSON parsing fails, it might be a plain text key
+      if (encryptedData.startsWith('AIza') || encryptedData.length > 30) {
+        console.warn('Found unencrypted API key, will re-encrypt on next save');
+        return encryptedData;
+      }
       console.error('Failed to decrypt API key:', error);
       return null;
     }

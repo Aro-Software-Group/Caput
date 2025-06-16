@@ -1,8 +1,3 @@
-// Expose ModularToolsRegistry from global window if missing
-if (typeof ModularToolsRegistry === 'undefined' && typeof window !== 'undefined' && window.ModularToolsRegistry) {
-  var ModularToolsRegistry = window.ModularToolsRegistry;
-}
-
 // Caput Main Application - Bootstrap & Initialization
 class CaputApp {
   constructor() {
@@ -10,43 +5,59 @@ class CaputApp {
     this.components = {};
     this.version = '1.0.2-beta';
   }
-
   async initialize() {
+    if (this.isInitialized) {
+      console.log('Caput already initialized, skipping...');
+      return;
+    }
+
     try {
       console.log(`Caput v${this.version} initializing...`);
 
       // Check browser compatibility
-      this.checkCompatibility();
-
-      // Initialize storage system
+      this.checkCompatibility();      // Initialize storage system
       this.components.storage = new CaputStorage();
-      await this.components.storage.initialize();      // Initialize modular tools registry
+      await this.components.storage.initialize();
+      
+      // Initialize modular tools registry
       this.components.tools = new ModularToolsRegistry();
       await this.components.tools.initialize();
 
-      // Initialize AI agent
-      this.components.agent = new CaputAgent(CAPUT_CONFIG, this.components.tools);
-        // Initialize UI controller
+      // Initialize UI controller
       this.components.ui = new CaputUI();
-      await this.components.ui.initialize();
+      await this.components.ui.initialize();      // Initialize AI agent with all components
+      if (!this.components.tools) {
+        throw new Error('Tools registry not initialized');
+      }
+      
+      this.components.agent = new CaputAgent(CAPUT_CONFIG, this.components.tools, {
+        storage: this.components.storage,
+        ui: this.components.ui
+      });
 
-      // Make UI globally accessible for tools
+      // Validate tools registry
+      if (typeof this.components.tools.getToolList !== 'function') {
+        console.error('Tools registry missing getToolList method');
+      }// Make UI globally accessible for tools
       window.caputUI = this.components.ui;
+      
+      // Make app globally accessible for debugging
+      window.caputApp = this;
 
       // Display tools information
-      this.components.ui.displayToolsInfo();
-
-      // Check onboarding requirements
+      this.components.ui.displayToolsInfo();      // Check onboarding requirements
       const apiKey = await this.components.storage.loadApiKey();
       const userName = this.components.storage.loadUserName();
 
       if (!apiKey || !userName) {
+        console.log('API key or username missing, showing onboarding');
         this.components.ui.showOnboarding();
       } else {
         try {
           await this.components.agent.initialize();
           this.showWelcomeMessage();
         } catch (error) {
+          console.error('Agent initialization failed:', error);
           this.showApiKeyPrompt();
         }
       }
@@ -55,10 +66,10 @@ class CaputApp {
       this.setupErrorHandling();
 
       // Set up auto-save
-      this.setupAutoSave();
-
-      // Make agent globally accessible
+      this.setupAutoSave();      // Make agent globally accessible
       window.caputAgent = this.components.agent;
+      // Make app globally accessible
+      window.caputApp = this;
 
       this.isInitialized = true;
       console.log('Caput initialized successfully');
@@ -299,61 +310,39 @@ class CaputApp {
   }
 
   showFatalError(error) {
-    // Create error overlay
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      font-family: system-ui, -apple-system, sans-serif;
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'fatal-error';
+    errorDiv.innerHTML = `
+      <h2>致命的なエラーが発生しました</h2>
+      <p>${error.message}</p>
+      <button onclick="location.reload()">再読み込み</button>
     `;
-
-    const errorBox = document.createElement('div');
-    errorBox.style.cssText = `
-      background: #1a1a1a;
-      padding: 2rem;
-      border-radius: 8px;
-      max-width: 500px;
-      text-align: center;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-    `;
-
-    errorBox.innerHTML = `
-      <h2 style="color: #ff6b6b; margin-bottom: 1rem;">
-        <i class="fas fa-exclamation-triangle"></i>
-        アプリケーション初期化エラー
-      </h2>
-      <p style="margin-bottom: 1rem; line-height: 1.6;">
-        Caputの初期化中にエラーが発生しました。<br>
-        ブラウザの互換性またはストレージの問題が考えられます。
-      </p>
-      <details style="margin-bottom: 1rem; text-align: left;">
-        <summary style="cursor: pointer; color: #ffd93d;">技術的詳細</summary>
-        <pre style="background: #000; padding: 1rem; border-radius: 4px; margin-top: 0.5rem; overflow: auto; font-size: 0.8rem;">${error.message}</pre>
-      </details>
-      <button onclick="location.reload()" style="
-        background: #007AFF;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1rem;
-      ">
-        再読み込み
-      </button>
-    `;
-
-    overlay.appendChild(errorBox);
-    document.body.appendChild(overlay);
+    document.body.appendChild(errorDiv);
+    console.error('Fatal error:', error);
+  }
+  
+  // Cleanup method for proper resource management
+  cleanup() {
+    // Clear intervals
+    if (this.autoSaveIntervalId) {
+      clearInterval(this.autoSaveIntervalId);
+    }
+    
+    // Remove event listeners
+    if (this.errorHandlers) {
+      this.errorHandlers.forEach(handler => {
+        if (handler.element && handler.event && handler.callback) {
+          handler.element.removeEventListener(handler.event, handler.callback);
+        }
+      });
+    }
+    
+    // Clear agent
+    if (this.components.agent) {
+      this.components.agent.reset();
+    }
+    
+    console.log('Caput app cleaned up');
   }
 
   // Utility methods for global access
@@ -370,57 +359,6 @@ class CaputApp {
     
     // Reinitialize
     await this.initialize();
-  }
-
-  cleanup() {
-    console.log('Cleaning up Caput resources...');
-    
-    // Clean up auto-save interval
-    if (this.autoSaveIntervalId) {
-      clearInterval(this.autoSaveIntervalId);
-      this.autoSaveIntervalId = null;
-    }
-    
-    // Clean up error handlers
-    if (this.errorHandlers && this.errorHandlers.length > 0) {
-      this.errorHandlers.forEach(({ type, handler }) => {
-        window.removeEventListener(type, handler);
-      });
-      this.errorHandlers = [];
-    }
-    
-    // Clean up components
-    if (this.components.storage) {
-      // Ensure final save before cleanup
-      this.performAutoSave().finally(() => {
-        if (this.components.storage.cleanup) {
-          this.components.storage.cleanup();
-        }
-      });
-    }
-    
-    if (this.components.ui && this.components.ui.cleanup) {
-      this.components.ui.cleanup();
-    }
-    
-    if (this.components.agent && this.components.agent.cleanup) {
-      this.components.agent.cleanup();
-    }
-    
-    if (this.components.tools && this.components.tools.cleanup) {
-      this.components.tools.cleanup();
-    }
-    
-    // Clear global references
-    if (window.caputUI === this.components.ui) {
-      window.caputUI = null;
-    }
-    if (window.caputAgent === this.components.agent) {
-      window.caputAgent = null;
-    }
-    
-    this.components = {};
-    this.isInitialized = false;
   }
 
   // Export functions for developer tools
@@ -555,14 +493,30 @@ class CaputApp {
 
 // Global app instance
 let caputApp = null;
+let isInitializing = false;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-  caputApp = new CaputApp();
-  await caputApp.initialize();
+  if (isInitializing || caputApp) {
+    console.log('Caput App already initializing or initialized, skipping...');
+    return;
+  }
   
-  // Make globally accessible for debugging
-  window.caputApp = caputApp;
+  isInitializing = true;
+  
+  try {
+    caputApp = new CaputApp();
+    await caputApp.initialize();
+    
+    // Make globally accessible for debugging
+    window.caputApp = caputApp;
+    
+    console.log('Caput App initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize Caput App:', error);
+  } finally {
+    isInitializing = false;
+  }
 });
 
 // Service Worker registration for offline support
